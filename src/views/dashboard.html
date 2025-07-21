@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Contactos Pro - Dashboard</title>
+    <link rel="stylesheet" href="../styles/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>CRM Contactos Pro</h1>
+                <div class="user-info">
+                    <span id="userWelcome">Bienvenido, Usuario</span>
+                    <button id="themeToggle" class="theme-toggle" title="Alternar tema">🌙</button>
+                    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Navigation Tabs -->
+            <nav class="nav-tabs">
+                <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+                <button class="tab-btn" data-tab="contacts">👥 Contactos</button>
+                <button class="tab-btn" data-tab="users">⚙️ Usuarios</button>
+                <button class="tab-btn" data-tab="reports">📈 Reportes</button>
+            </nav>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <h3>Total Contactos</h3>
+                        <div id="totalContacts" class="stat-number">0</div>
+                        <div class="stat-trend">📈 +12% este mes</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Leads Activos</h3>
+                        <div id="totalLeads" class="stat-number">0</div>
+                        <div class="stat-trend">🎯 +8% conversión</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Clientes</h3>
+                        <div id="totalClients" class="stat-number">0</div>
+                        <div class="stat-trend">💰 85% retención</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Empresas</h3>
+                        <div id="totalCompanies" class="stat-number">0</div>
+                        <div class="stat-trend">🏢 Diversificado</div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-section">
+                    <div class="chart-card">
+                        <h3>📊 Estado de Contactos</h3>
+                        <div class="chart-container">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>📈 Tendencia Mensual</h3>
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-section">
+                    <div class="section-header">
+                        <h3>🕒 Actividad Reciente</h3>
+                        <button class="view-all-btn">Ver todo</button>
+                    </div>
+                    <div id="recentActivity" class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon">👤</div>
+                            <div class="activity-content">
+                                <p><strong>Ana García</strong> actualizada a cliente</p>
+                                <span class="activity-time">Hace 2 horas</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon">📞</div>
+                            <div class="activity-content">
+                                <p><strong>Llamada programada</strong> con Carlos Rodríguez</p>
+                                <span class="activity-time">Hace 4 horas</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon">✉️</div>
+                            <div class="activity-content">
+                                <p><strong>Email enviado</strong> a María Fernández</p>
+                                <span class="activity-time">Ayer</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacts Tab -->
+            <div id="contacts-tab" class="tab-content">
+                <div class="contacts-section">
+                    <div class="section-header">
+                        <h2>Gestión de Contactos</h2>
+                        <div class="header-actions">
+                            <div class="search-box">
+                                <input type="text" id="contactsSearch" placeholder="🔍 Buscar contactos...">
+                            </div>
+                            <button id="addContactBtn" class="add-btn">+ Nuevo Contacto</button>
+                        </div>
+                    </div>
+
+                    <div class="filters-bar">
+                        <select id="statusFilter">
+                            <option value="">Todos los estados</option>
+                            <option value="lead">Leads</option>
+                            <option value="prospect">Prospects</option>
+                            <option value="cliente">Clientes</option>
+                            <option value="inactivo">Inactivos</option>
+                        </select>
+                        <select id="priorityFilter">
+                            <option value="">Todas las prioridades</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Media</option>
+                            <option value="low">Baja</option>
+                        </select>
+                        <button id="toggleView" class="view-toggle">📋 Vista Lista</button>
+                    </div>
+
+                    <div id="contactsContainer" class="contacts-table-container">
+                        <table id="contactsTable" class="contacts-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Empresa</th>
+                                    <th>Email</th>
+                                    <th>Teléfono</th>
+                                    <th>Estado</th>
+                                    <th>Prioridad</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contactsTableBody">
+                                <!-- Se cargará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="users-tab" class="tab-content">
+                <div class="users-section">
+                    <div class="section-header">
+                        <h2>Administración de Usuarios</h2>
+                        <button id="addUserBtn" class="add-btn">+ Agregar Usuario</button>
+                    </div>
+
+                    <div class="dashboard-stats">
+                        <div class="stat-card">
+                            <h3>Total de Usuarios</h3>
+                            <div id="totalUsers" class="stat-number">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Administradores</h3>
+                            <div id="totalAdmins" class="stat-number">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Usuarios Regulares</h3>
+                            <div id="totalRegularUsers" class="stat-number">0</div>
+                        </div>
+                    </div>
+
+                    <div class="users-table-container">
+                        <table id="usersTable" class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Rol</th>
+                                    <th>Fecha de Registro</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Los usuarios se cargarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports-tab" class="tab-content">
+                <div class="reports-section">
+                    <div class="section-header">
+                        <h2>📊 Centro de Reportes</h2>
+                    </div>
+                    
+                    <div class="reports-grid">
+                        <div class="report-card">
+                            <div class="report-icon">📄</div>
+                            <h3>Exportar Contactos</h3>
+                            <p>Exporta todos los contactos a CSV con filtros personalizados</p>
+                            <button id="exportContactsBtn" class="export-btn">Descargar CSV</button>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-icon">📈</div>
+                            <h3>Reporte de Conversión</h3>
+                            <p>Análisis detallado de la conversión de leads a clientes</p>
+                            <button id="conversionReportBtn" class="export-btn">Generar Reporte</button>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-icon">📊</div>
+                            <h3>Dashboard Ejecutivo</h3>
+                            <p>Métricas clave del negocio y KPIs principales</p>
+                            <button id="executiveReportBtn" class="export-btn">Ver Dashboard</button>
+                        </div>
+                        <div class="report-card">
+                            <div class="report-icon">🎯</div>
+                            <h3>Análisis de Pipeline</h3>
+                            <p>Estado del pipeline de ventas y proyecciones</p>
+                            <button id="pipelineReportBtn" class="export-btn">Analizar Pipeline</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para Agregar/Editar Contacto -->
+    <div id="contactModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="contactModalTitle">Agregar Contacto</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="contactForm" class="contact-form">
+                <input type="hidden" id="contactId" name="id">
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="contactName">Nombre completo *</label>
+                        <input type="text" id="contactName" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactEmail">Email</label>
+                        <input type="email" id="contactEmail" name="email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactPhone">Teléfono</label>
+                        <input type="tel" id="contactPhone" name="phone">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactCompany">Empresa</label>
+                        <input type="text" id="contactCompany" name="company">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactPosition">Cargo</label>
+                        <input type="text" id="contactPosition" name="position">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactWebsite">Sitio Web</label>
+                        <input type="url" id="contactWebsite" name="website">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="contactAddress">Dirección</label>
+                        <input type="text" id="contactAddress" name="address">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactCity">Ciudad</label>
+                        <input type="text" id="contactCity" name="city">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactCountry">País</label>
+                        <input type="text" id="contactCountry" name="country" value="España">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactStatus">Estado</label>
+                        <select id="contactStatus" name="status" required>
+                            <option value="lead">Lead</option>
+                            <option value="prospect">Prospect</option>
+                            <option value="cliente">Cliente</option>
+                            <option value="inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactPriority">Prioridad</label>
+                        <select id="contactPriority" name="priority" required>
+                            <option value="low">Baja</option>
+                            <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactSource">Fuente</label>
+                        <select id="contactSource" name="source">
+                            <option value="">Seleccionar...</option>
+                            <option value="web">Sitio Web</option>
+                            <option value="referido">Referido</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="evento">Evento</option>
+                            <option value="email">Email Marketing</option>
+                            <option value="telefono">Llamada</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="contactTags">Tags (separados por comas)</label>
+                        <input type="text" id="contactTags" name="tags" placeholder="ej: vip, marketing, tecnología">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="contactNotes">Notas</label>
+                        <textarea id="contactNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeContactModal()">Cancelar</button>
+                    <button type="submit" class="save-btn">Guardar Contacto</button>
+                </div>
+                
+                <div id="contact-form-error" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar/Editar Usuario -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Agregar Usuario</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="userForm" class="user-form">
+                <input type="hidden" id="userId" name="id">
+                
+                <div class="form-group">
+                    <label for="userName">Nombre completo</label>
+                    <input type="text" id="userName" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail" name="email" required>
+                </div>
+                
+                <div class="form-group" id="passwordGroup">
+                    <label for="userPassword">Contraseña</label>
+                    <input type="password" id="userPassword" name="password" minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="userRole">Rol</label>
+                    <select id="userRole" name="role" required>
+                        <option value="user">Usuario</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeUserModal()">Cancelar</button>
+                    <button type="submit" class="save-btn">Guardar</button>
+                </div>
+                
+                <div id="user-form-error" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Eliminación -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirmar Eliminación</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar este elemento?</p>
+                <p id="deleteInfo" class="delete-info"></p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="cancel-btn" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="button" id="confirmDeleteBtn" class="delete-btn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner-large"></div>
+        <p>Cargando...</p>
+    </div>
+
+    <script src="../scripts/dashboard.js"></script>
+</body>
+</html>
