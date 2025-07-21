@@ -106,3 +106,17 @@ tmp/
 check-db.js
 create_test_user.js
 *.bat
+
+# Documentation temp files
+CLEANUP_SUMMARY.md
+FIXES_APPLIED.md
+IMPLEMENTACION_COMPLETADA.md
+README_GITHUB.md
+README_new.md
+
+# Duplicate/backup files
+*_new.js
+*_new.html
+*_new.css
+*_old.*
+*_backup.*
