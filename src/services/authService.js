@@ -56,7 +56,7 @@ class AuthService {
   }
 
   async register(userData) {
-    const { name, email, password, role = 'user' } = userData;
+    const { name, email, password, role = 'user', gender, avatar } = userData;
 
     return new Promise(async (resolve, reject) => {
       // Verificar si el email ya existe
@@ -75,12 +75,14 @@ class AuthService {
           // Hashear la contraseña
           const hashedPassword = await bcrypt.hash(password, 10);
 
-          // Crear el usuario
+          // Crear el usuario con todos los campos
           this.db.createUser({
             name,
             email,
             password: hashedPassword,
-            role
+            role,
+            gender,
+            avatar
           }, (err, user) => {
             if (err) {
               reject(new Error('Error al crear usuario'));

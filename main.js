@@ -9,8 +9,8 @@ let authService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1400,
+    height: 900,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -87,7 +87,8 @@ app.on('window-all-closed', () => {
 ipcMain.handle('auth:login', async (event, credentials) => {
   try {
     const result = await authService.login(credentials.email, credentials.password);
-    return { success: true, data: result };
+    // result ya contiene { user: {...}, token: "..." }
+    return { success: true, ...result };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -200,6 +201,71 @@ ipcMain.handle('contacts:getStats', async () => {
   try {
     const stats = await database.getContactStats();
     return { success: true, data: stats };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handlers para gestión de tags
+ipcMain.handle('tags:getAll', async () => {
+  try {
+    return new Promise((resolve, reject) => {
+      database.getAllTags((err, tags) => {
+        if (err) {
+          resolve({ success: false, error: err.message });
+        } else {
+          resolve({ success: true, data: tags });
+        }
+      });
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('tags:create', async (event, tagData) => {
+  try {
+    return new Promise((resolve, reject) => {
+      database.createTag(tagData, (err, tag) => {
+        if (err) {
+          resolve({ success: false, error: err.message });
+        } else {
+          resolve({ success: true, data: tag });
+        }
+      });
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('tags:update', async (event, tagData) => {
+  try {
+    return new Promise((resolve, reject) => {
+      database.updateTag(tagData.id, tagData, (err) => {
+        if (err) {
+          resolve({ success: false, error: err.message });
+        } else {
+          resolve({ success: true, data: tagData });
+        }
+      });
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('tags:delete', async (event, tagId) => {
+  try {
+    return new Promise((resolve, reject) => {
+      database.deleteTag(tagId, (err) => {
+        if (err) {
+          resolve({ success: false, error: err.message });
+        } else {
+          resolve({ success: true });
+        }
+      });
+    });
   } catch (error) {
     return { success: false, error: error.message };
   }

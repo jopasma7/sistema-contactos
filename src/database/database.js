@@ -23,6 +23,8 @@ class Database {
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         role TEXT DEFAULT 'user',
+        gender TEXT,
+        avatar TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -35,17 +37,19 @@ class Database {
         name TEXT NOT NULL,
         email TEXT,
         phone TEXT,
+        country TEXT,
+        avatar TEXT,
+        tags TEXT,
+        comments TEXT,
         company TEXT,
         position TEXT,
         address TEXT,
         city TEXT,
-        country TEXT,
         website TEXT,
         notes TEXT,
         status TEXT DEFAULT 'lead',
         priority TEXT DEFAULT 'medium',
         source TEXT,
-        tags TEXT,
         assigned_to INTEGER,
         last_contact DATE,
         next_followup DATE,
@@ -73,11 +77,34 @@ class Database {
       )
     `;
 
+    // Tabla de etiquetas
+    const createTagsTable = `
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        color TEXT NOT NULL DEFAULT '#4FACFE',
+        type TEXT NOT NULL DEFAULT 'category',
+        usage TEXT NOT NULL DEFAULT 'both',
+        description TEXT,
+        created_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id)
+      )
+    `;
+
     this.db.run(createUsersTable, (err) => {
       if (err) {
         console.error('Error creating users table:', err);
       } else {
         console.log('Users table ready');
+        // Agregar columnas que puedan faltar en bases de datos existentes
+        this.db.run(`ALTER TABLE users ADD COLUMN gender TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE users ADD COLUMN avatar TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
         this.createDefaultAdmin();
       }
     });
@@ -87,6 +114,49 @@ class Database {
         console.error('Error creating contacts table:', err);
       } else {
         console.log('Contacts table ready');
+        // Agregar columnas que puedan faltar en bases de datos existentes
+        this.db.run(`ALTER TABLE contacts ADD COLUMN avatar TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN company TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN position TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN address TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN city TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN website TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN notes TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN status TEXT DEFAULT 'lead'`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN priority TEXT DEFAULT 'medium'`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN source TEXT`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN assigned_to INTEGER`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN last_contact DATE`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN next_followup DATE`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
+        this.db.run(`ALTER TABLE contacts ADD COLUMN created_by INTEGER`, (err) => {
+          // Ignorar error si la columna ya existe
+        });
         this.createSampleContacts();
       }
     });
@@ -96,6 +166,15 @@ class Database {
         console.error('Error creating activities table:', err);
       } else {
         console.log('Activities table ready');
+      }
+    });
+
+    this.db.run(createTagsTable, (err) => {
+      if (err) {
+        console.error('Error creating tags table:', err);
+      } else {
+        console.log('Tags table ready');
+        this.createDefaultTags();
       }
     });
   }
@@ -189,17 +268,17 @@ class Database {
   }
 
   createUser(userData, callback) {
-    const { name, email, password, role = 'user' } = userData;
+    const { name, email, password, role = 'user', gender, avatar } = userData;
     const sql = `
-      INSERT INTO users (name, email, password, role, updated_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO users (name, email, password, role, gender, avatar, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `;
 
-    this.db.run(sql, [name, email, password, role], function(err) {
+    this.db.run(sql, [name, email, password, role, gender, avatar], function(err) {
       if (err) {
         callback(err, null);
       } else {
-        callback(null, { id: this.lastID, name, email, role });
+        callback(null, { id: this.lastID, name, email, role, gender, avatar });
       }
     });
   }
@@ -216,7 +295,7 @@ class Database {
 
   getAllUsers() {
     return new Promise((resolve, reject) => {
-      const sql = 'SELECT id, name, email, role, created_at, updated_at FROM users ORDER BY created_at DESC';
+      const sql = 'SELECT id, name, email, role, gender, avatar, created_at, updated_at FROM users ORDER BY created_at DESC';
       this.db.all(sql, [], (err, rows) => {
         if (err) {
           reject(err);
@@ -229,18 +308,18 @@ class Database {
 
   updateUser(userData) {
     return new Promise((resolve, reject) => {
-      const { id, name, email, role } = userData;
+      const { id, name, email, role, gender, avatar } = userData;
       const sql = `
         UPDATE users 
-        SET name = ?, email = ?, role = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, email = ?, role = ?, gender = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
 
-      this.db.run(sql, [name, email, role, id], function(err) {
+      this.db.run(sql, [name, email, role, gender, avatar, id], function(err) {
         if (err) {
           reject(err);
         } else {
-          resolve({ id, name, email, role });
+          resolve({ id, name, email, role, gender, avatar });
         }
       });
     });
@@ -363,7 +442,12 @@ class Database {
         if (err) {
           reject(err);
         } else {
-          resolve(rows);
+          // Map 'notes' to 'comments' for frontend compatibility
+          const mappedRows = rows.map(row => ({
+            ...row,
+            comments: row.notes
+          }));
+          resolve(mappedRows);
         }
       });
     });
@@ -372,21 +456,17 @@ class Database {
   createContact(contactData) {
     return new Promise((resolve, reject) => {
       const {
-        name, email, phone, company, position, address, city, country,
-        website, notes, status = 'lead', priority = 'medium', source,
-        tags, assigned_to, created_by
+        name, email, phone, country, avatar, tags, comments, created_by
       } = contactData;
 
       const sql = `
         INSERT INTO contacts (
-          name, email, phone, company, position, address, city, country,
-          website, notes, status, priority, source, tags, assigned_to, created_by, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          name, email, phone, country, avatar, tags, notes, created_by, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `;
 
       this.db.run(sql, [
-        name, email, phone, company, position, address, city, country,
-        website, notes, status, priority, source, tags, assigned_to, created_by
+        name, email, phone, country, avatar, tags, comments, created_by
       ], function(err) {
         if (err) {
           reject(err);
@@ -400,27 +480,23 @@ class Database {
   updateContact(contactData) {
     return new Promise((resolve, reject) => {
       const {
-        id, name, email, phone, company, position, address, city, country,
-        website, notes, status, priority, source, tags, assigned_to
+        id, name, email, phone, country, avatar, tags, comments
       } = contactData;
 
       const sql = `
         UPDATE contacts 
-        SET name = ?, email = ?, phone = ?, company = ?, position = ?, 
-            address = ?, city = ?, country = ?, website = ?, notes = ?,
-            status = ?, priority = ?, source = ?, tags = ?, assigned_to = ?,
-            updated_at = CURRENT_TIMESTAMP
+        SET name = ?, email = ?, phone = ?, country = ?, avatar = ?, 
+            tags = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
 
       this.db.run(sql, [
-        name, email, phone, company, position, address, city, country,
-        website, notes, status, priority, source, tags, assigned_to, id
+        name, email, phone, country, avatar, tags, comments, id
       ], function(err) {
         if (err) {
           reject(err);
         } else {
-          resolve({ id, ...contactData });
+          resolve({ id, name, email, phone, country, avatar, tags, comments });
         }
       });
     });
@@ -461,6 +537,87 @@ class Database {
         }
       });
     });
+  }
+
+  // ============ TAGS METHODS ============
+  
+  createDefaultTags() {
+    const defaultTags = [
+      { name: 'VIP', color: '#FFD700', type: 'category', usage: 'both', description: 'Clientes importantes' },
+      { name: 'Activo', color: '#28A745', type: 'status', usage: 'contacts', description: 'Contacto activo' },
+      { name: 'Prospecto', color: '#17A2B8', type: 'status', usage: 'contacts', description: 'Cliente potencial' },
+      { name: 'Cliente', color: '#007BFF', type: 'category', usage: 'contacts', description: 'Cliente confirmado' },
+      { name: 'Urgente', color: '#DC3545', type: 'priority', usage: 'both', description: 'Prioridad alta' },
+      { name: 'Seguimiento', color: '#FFC107', type: 'action', usage: 'contacts', description: 'Requiere seguimiento' },
+      { name: 'Nuevo', color: '#6C757D', type: 'status', usage: 'both', description: 'Contacto o usuario nuevo' },
+      { name: 'Inactivo', color: '#6C757D', type: 'status', usage: 'both', description: 'Sin actividad reciente' },
+      { name: 'Empresa', color: '#20C997', type: 'category', usage: 'contacts', description: 'Contacto empresarial' },
+      { name: 'Personal', color: '#E83E8C', type: 'category', usage: 'contacts', description: 'Contacto personal' },
+      { name: 'Admin', color: '#DC3545', type: 'role', usage: 'users', description: 'Usuario administrador' },
+      { name: 'Vendedor', color: '#6F42C1', type: 'role', usage: 'users', description: 'Usuario vendedor' }
+    ];
+
+    // Check if tags exist before creating
+    this.db.get('SELECT COUNT(*) as count FROM tags', [], (err, result) => {
+      if (err || result.count === 0) {
+        const insertTag = `INSERT OR IGNORE INTO tags (name, color, type, usage, description, created_by) VALUES (?, ?, ?, ?, ?, ?)`;
+        
+        defaultTags.forEach(tag => {
+          this.db.run(insertTag, [tag.name, tag.color, tag.type, tag.usage, tag.description, 1], (err) => {
+            if (err) {
+              console.error('Error creating default tag:', err);
+            }
+          });
+        });
+        
+        console.log('Default tags created');
+      }
+    });
+  }
+
+  createTag(tagData, callback) {
+    const sql = `
+      INSERT INTO tags (name, color, type, usage, description, created_by)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    
+    this.db.run(sql, [
+      tagData.name, tagData.color, tagData.type, tagData.usage, 
+      tagData.description, tagData.created_by
+    ], function(err) {
+      if (callback) {
+        callback(err, { id: this.lastID, ...tagData });
+      }
+    });
+  }
+
+  getAllTags(callback) {
+    const sql = 'SELECT * FROM tags ORDER BY name';
+    this.db.all(sql, [], callback);
+  }
+
+  getTagById(id, callback) {
+    const sql = 'SELECT * FROM tags WHERE id = ?';
+    this.db.get(sql, [id], callback);
+  }
+
+  updateTag(id, tagData, callback) {
+    const sql = `
+      UPDATE tags SET 
+        name = ?, color = ?, type = ?, usage = ?, description = ?, 
+        updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `;
+    
+    this.db.run(sql, [
+      tagData.name, tagData.color, tagData.type, tagData.usage,
+      tagData.description, id
+    ], callback);
+  }
+
+  deleteTag(id, callback) {
+    const sql = 'DELETE FROM tags WHERE id = ?';
+    this.db.run(sql, [id], callback);
   }
 
   close() {

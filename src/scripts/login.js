@@ -151,10 +151,16 @@ async function handleLogin(e) {
             // Show loading overlay with progress
             showLoadingOverlay();
             
-            // Store user data
-            localStorage.setItem('currentUser', JSON.stringify(result.user));
+            // Store user data in both localStorage and sessionStorage for redundancy
+            const userDataStr = JSON.stringify(result.user);
+            localStorage.setItem('currentUser', userDataStr);
+            sessionStorage.setItem('currentUser', userDataStr);
+            
+            console.log('User data stored:', result.user);
+            
             if (result.token) {
                 localStorage.setItem('userToken', result.token);
+                sessionStorage.setItem('userToken', result.token);
             }
             
             // Navigate to dashboard after animation
@@ -229,42 +235,58 @@ function showToast(message, type = 'info') {
     toast.className = `toast toast-${type}`;
     
     const colors = {
-        success: { bg: 'rgba(56, 239, 125, 0.1)', text: '#10b981', border: '#10b981' },
-        error: { bg: 'rgba(245, 87, 108, 0.1)', text: '#ef4444', border: '#ef4444' },
-        info: { bg: 'rgba(79, 172, 254, 0.1)', text: '#3b82f6', border: '#3b82f6' }
+        success: { bg: '#d4edda', text: '#155724', border: '#28a745' },
+        error: { bg: '#f8d7da', text: '#721c24', border: '#dc3545' },
+        info: { bg: '#d1ecf1', text: '#0c5460', border: '#17a2b8' }
     };
     
     const color = colors[type] || colors.info;
     
     toast.style.cssText = `
         position: fixed;
-        top: 2rem;
-        right: 2rem;
+        top: 20px;
+        right: 20px;
         background: ${color.bg};
         color: ${color.text};
-        padding: 1rem 1.5rem;
+        padding: 16px 24px;
         border-radius: 12px;
-        border: 1px solid ${color.border};
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid ${color.border};
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
         z-index: 10001;
+        min-width: 280px;
         max-width: 400px;
         font-weight: 500;
+        font-size: 14px;
+        line-height: 1.4;
         font-family: 'Inter', sans-serif;
-        backdrop-filter: blur(20px);
         animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        word-wrap: break-word;
     `;
     
     toast.textContent = message;
-    document.body.appendChild(toast);
     
-    setTimeout(() => {
+    // Add click to close functionality
+    const closeToast = () => {
         toast.style.animation = 'slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
         }, 300);
-    }, 3000);
+        clearTimeout(autoCloseTimer);
+    };
+    
+    toast.addEventListener('click', closeToast);
+    
+    document.body.appendChild(toast);
+    
+    // Auto-close after 4 seconds
+    const autoCloseTimer = setTimeout(() => {
+        if (toast.parentNode) {
+            closeToast();
+        }
+    }, 4000);
 }
 
 function isValidEmail(email) {

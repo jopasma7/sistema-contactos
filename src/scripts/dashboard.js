@@ -3,20 +3,26 @@
 let currentUser = null;
 let users = [];
 let contacts = [];
+let tags = [];
 let currentTab = 'dashboard';
 let isEditing = false;
 let editingUserId = null;
 let editingContactId = null;
+let editingTagId = null;
 let isDarkMode = false;
 
 // Elementos del DOM
 const userModal = document.getElementById('userModal');
 const contactModal = document.getElementById('contactModal');
+const tagModal = document.getElementById('tagModal');
 const deleteModal = document.getElementById('deleteModal');
 const userForm = document.getElementById('userForm');
 const contactForm = document.getElementById('contactForm');
+const tagForm = document.getElementById('tagForm');
 const usersTableBody = document.getElementById('usersTableBody');
-const contactsTableBody = document.getElementById('contactsTableBody');
+let contactsTableBody = document.getElementById('contactsTableBody');
+let tagsTableBody = document.getElementById('tagsTableBody');
+const tagsGrid = document.getElementById('tagsGrid');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const themeToggle = document.getElementById('themeToggle');
 
@@ -37,6 +43,7 @@ let trendChart = null;
 document.addEventListener('DOMContentLoaded', () => {
     initializeDashboard();
     setupEventListeners();
+    initializeResizableColumns();
 });
 
 function setupEventListeners() {
@@ -53,16 +60,36 @@ function setupEventListeners() {
     // Botones principales
     document.getElementById('addUserBtn')?.addEventListener('click', openAddUserModal);
     document.getElementById('addContactBtn')?.addEventListener('click', openAddContactModal);
+    document.getElementById('addTagBtn')?.addEventListener('click', openAddTagModal);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     
     // Forms
     userForm?.addEventListener('submit', handleUserFormSubmit);
     contactForm?.addEventListener('submit', handleContactFormSubmit);
+    tagForm?.addEventListener('submit', handleTagFormSubmit);
     
     // Search and filters
     document.getElementById('contactsSearch')?.addEventListener('input', filterContacts);
-    document.getElementById('statusFilter')?.addEventListener('change', filterContacts);
-    document.getElementById('priorityFilter')?.addEventListener('change', filterContacts);
+    
+    // Users search and filters
+    document.getElementById('usersSearch')?.addEventListener('input', filterUsers);
+    document.getElementById('roleFilter')?.addEventListener('change', filterUsers);
+    document.getElementById('genderFilter')?.addEventListener('change', filterUsers);
+    
+    // Tags search and filters
+    document.getElementById('tagsSearch')?.addEventListener('input', filterTags);
+    document.getElementById('tagTypeFilter')?.addEventListener('change', filterTags);
+    document.getElementById('tagUsageFilter')?.addEventListener('change', filterTags);
+    
+    // Tag color preview
+    document.getElementById('tagColor')?.addEventListener('input', updateTagPreview);
+    document.getElementById('tagName')?.addEventListener('input', updateTagPreview);
+    
+    // Avatar upload for users
+    document.getElementById('avatarInput')?.addEventListener('change', handleAvatarUpload);
+    
+    // Avatar upload for contacts
+    document.getElementById('contactAvatarInput')?.addEventListener('change', handleContactAvatarUpload);
     
     // Export buttons
     document.getElementById('exportContactsBtn')?.addEventListener('click', exportContacts);
@@ -70,6 +97,21 @@ function setupEventListeners() {
     
     // Delete confirmation
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
+    
+    // View toggles for contacts
+    document.getElementById('listView')?.addEventListener('click', () => changeContactView('list'));
+    document.getElementById('cardView')?.addEventListener('click', () => changeContactView('card'));
+    document.getElementById('gridView')?.addEventListener('click', () => changeContactView('grid'));
+    
+    // View toggles for users
+    document.getElementById('userListView')?.addEventListener('click', () => changeUserView('list'));
+    document.getElementById('userCardView')?.addEventListener('click', () => changeUserView('card'));
+    document.getElementById('userGridView')?.addEventListener('click', () => changeUserView('grid'));
+    
+    // View toggles for tags
+    document.getElementById('tagListView')?.addEventListener('click', () => changeTagView('list'));
+    document.getElementById('tagCardView')?.addEventListener('click', () => changeTagView('card'));
+    document.getElementById('tagGridView')?.addEventListener('click', () => changeTagView('grid'));
     
     // Label positioning fixes
     setupLabelHandlers();
@@ -92,6 +134,123 @@ function setupEventListeners() {
     });
 }
 
+// Initialize resizable columns
+function initializeResizableColumns() {
+    const table = document.getElementById('contactsTable');
+    if (!table) return;
+    
+    const resizers = table.querySelectorAll('.column-resizer');
+    
+    resizers.forEach((resizer, index) => {
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        let column = null;
+        
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            column = e.target.parentElement;
+            startWidth = parseInt(document.defaultView.getComputedStyle(column).width, 10);
+            
+            document.addEventListener('mousemove', doResize);
+            document.addEventListener('mouseup', stopResize);
+            
+            // Prevent text selection
+            document.body.style.userSelect = 'none';
+            table.style.cursor = 'col-resize';
+        });
+        
+        function doResize(e) {
+            if (!isResizing) return;
+            
+            const diff = e.clientX - startX;
+            const newWidth = startWidth + diff;
+            const minWidth = parseInt(column.dataset.minWidth, 10) || 100;
+            
+            if (newWidth >= minWidth) {
+                column.style.width = newWidth + 'px';
+            }
+        }
+        
+        function stopResize() {
+            isResizing = false;
+            document.removeEventListener('mousemove', doResize);
+            document.removeEventListener('mouseup', stopResize);
+            
+            // Restore text selection
+            document.body.style.userSelect = '';
+            table.style.cursor = '';
+        }
+    });
+}
+
+// Handle contact avatar upload
+function handleContactAvatarUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const avatarImage = document.getElementById('contactAvatarImage');
+            if (avatarImage) {
+                avatarImage.src = e.target.result;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Get country information with flag
+function getCountryInfo(countryInput) {
+    if (!countryInput) return '-';
+    
+    const countries = {
+        'ES': { name: 'España', code: 'es' },
+        'US': { name: 'Estados Unidos', code: 'us' },
+        'MX': { name: 'México', code: 'mx' },
+        'AR': { name: 'Argentina', code: 'ar' },
+        'CO': { name: 'Colombia', code: 'co' },
+        'PE': { name: 'Perú', code: 'pe' },
+        'VE': { name: 'Venezuela', code: 've' },
+        'CL': { name: 'Chile', code: 'cl' },
+        'EC': { name: 'Ecuador', code: 'ec' },
+        'UY': { name: 'Uruguay', code: 'uy' },
+        'PY': { name: 'Paraguay', code: 'py' },
+        'BO': { name: 'Bolivia', code: 'bo' },
+        'CR': { name: 'Costa Rica', code: 'cr' },
+        'PA': { name: 'Panamá', code: 'pa' },
+        'GT': { name: 'Guatemala', code: 'gt' },
+        'HN': { name: 'Honduras', code: 'hn' },
+        'NI': { name: 'Nicaragua', code: 'ni' },
+        'SV': { name: 'El Salvador', code: 'sv' },
+        'DO': { name: 'República Dominicana', code: 'do' },
+        'CU': { name: 'Cuba', code: 'cu' },
+        'FR': { name: 'Francia', code: 'fr' },
+        'DE': { name: 'Alemania', code: 'de' },
+        'IT': { name: 'Italia', code: 'it' },
+        'PT': { name: 'Portugal', code: 'pt' },
+        'GB': { name: 'Reino Unido', code: 'gb' },
+        'BR': { name: 'Brasil', code: 'br' }
+    };
+    
+    // Si es un código de país, devolverlo con bandera
+    if (countries[countryInput]) {
+        const country = countries[countryInput];
+        return `<img src="https://flagcdn.com/w20/${country.code}.png" alt="${country.name}" class="flag-icon"><span class="country-name">${country.name}</span>`;
+    }
+    
+    // Si es un nombre de país, buscar el código correspondiente
+    const countryName = countryInput.toLowerCase();
+    for (const [code, country] of Object.entries(countries)) {
+        if (country.name.toLowerCase().includes(countryName) || countryName.includes(country.name.toLowerCase())) {
+            return `<img src="https://flagcdn.com/w20/${country.code}.png" alt="${country.name}" class="flag-icon"><span class="country-name">${country.name}</span>`;
+        }
+    }
+    
+    // Si no se encuentra, devolver con una bandera genérica
+    return `🌍 ${countryInput}`;
+}
+
 function setupLabelHandlers() {
     // Add event listeners for inputs to handle labels
     document.addEventListener('input', (e) => {
@@ -109,7 +268,7 @@ function setupLabelHandlers() {
     
     // Add event listeners for selects
     document.addEventListener('change', (e) => {
-        if (e.target.matches('#contactModal select')) {
+        if (e.target.matches('#contactModal select, #userModal select, #tagModal select')) {
             const label = e.target.nextElementSibling;
             if (label && label.tagName === 'LABEL') {
                 if (e.target.value) {
@@ -125,9 +284,38 @@ function setupLabelHandlers() {
 }
 
 async function initializeDashboard() {
-    currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    // Intentar obtener el usuario actual
+    let currentUserData = localStorage.getItem('currentUser');
+    
+    // Si no hay datos en localStorage, intentar con sessionStorage
+    if (!currentUserData || currentUserData === 'undefined' || currentUserData === 'null') {
+        currentUserData = sessionStorage.getItem('currentUser');
+    }
+    
+    currentUser = null;
+    
+    if (currentUserData && currentUserData !== 'undefined' && currentUserData !== 'null' && currentUserData.length > 2) {
+        try {
+            currentUser = JSON.parse(currentUserData);
+            
+            // Verificar que el objeto tenga la estructura correcta
+            if (currentUser && typeof currentUser === 'object' && currentUser.id && currentUser.name) {
+                console.log('Usuario logueado:', currentUser.name);
+                // Asegurar que esté en localStorage
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            } else {
+                currentUser = null;
+            }
+        } catch (error) {
+            console.error('Error al parsear datos de usuario:', error);
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            sessionStorage.removeItem('currentUser');
+        }
+    }
     
     if (!currentUser) {
+        console.log('No hay sesión válida, redirigiendo al login');
         await window.electronAPI.navigateToLogin();
         return;
     }
@@ -229,6 +417,9 @@ function switchTab(tabName) {
         case 'contacts':
             loadContacts();
             break;
+        case 'tags':
+            loadTags();
+            break;
         case 'dashboard':
             loadContactStats();
             break;
@@ -275,19 +466,44 @@ async function loadContactStats() {
 }
 
 function renderContactsTable() {
-    if (!contactsTableBody) return;
+    // Use global variable, but fallback to getElementById if not available
+    let tableBody = contactsTableBody || document.getElementById('contactsTableBody');
+    if (!tableBody) {
+        console.error('Contacts table body not found!');
+        return;
+    }
     
-    contactsTableBody.innerHTML = '';
+    console.log('Rendering contacts table with', contacts.length, 'contacts');
+    tableBody.innerHTML = '';
+    
+    if (!contacts || contacts.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #666;">No hay contactos para mostrar</td></tr>';
+        return;
+    }
     
     contacts.forEach(contact => {
         const row = document.createElement('tr');
+        
+        // Process avatar
+        const avatarSrc = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        
+        // Process tags
+        const tagsArray = contact.tags ? contact.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+        const tagsHtml = tagsArray.map(tag => `<span class="contact-tag-small">${tag}</span>`).join('');
+        
+        // Process country with flag
+        const countryInfo = getCountryInfo(contact.country);
+        
         row.innerHTML = `
             <td><strong>${contact.name}</strong></td>
-            <td>${contact.company || '-'}</td>
+            <td class="contact-avatar-cell">
+                <img src="${avatarSrc}" alt="Avatar" class="contact-avatar-small">
+            </td>
             <td>${contact.email || '-'}</td>
             <td>${contact.phone || '-'}</td>
-            <td><span class="status-badge status-${contact.status}">${getStatusLabel(contact.status)}</span></td>
-            <td><span class="priority-badge priority-${contact.priority}">${getPriorityLabel(contact.priority)}</span></td>
+            <td class="contact-country-cell">${countryInfo}</td>
+            <td class="contact-tags-cell">${tagsHtml || '-'}</td>
+            <td class="contact-comments-cell" title="${contact.comments || ''}">${contact.comments || '-'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="edit-btn" onclick="openEditContactModal(${contact.id})">Editar</button>
@@ -295,44 +511,83 @@ function renderContactsTable() {
                 </div>
             </td>
         `;
-        contactsTableBody.appendChild(row);
+        
+        tableBody.appendChild(row);
     });
 }
 
 function filterContacts() {
     const searchTerm = document.getElementById('contactsSearch')?.value.toLowerCase() || '';
-    const statusFilter = document.getElementById('statusFilter')?.value || '';
-    const priorityFilter = document.getElementById('priorityFilter')?.value || '';
     
     const filteredContacts = contacts.filter(contact => {
         const matchesSearch = contact.name.toLowerCase().includes(searchTerm) ||
-                             (contact.company && contact.company.toLowerCase().includes(searchTerm)) ||
-                             (contact.email && contact.email.toLowerCase().includes(searchTerm));
+                             (contact.email && contact.email.toLowerCase().includes(searchTerm)) ||
+                             (contact.phone && contact.phone.toLowerCase().includes(searchTerm)) ||
+                             (contact.country && getCountryInfo(contact.country).toLowerCase().includes(searchTerm)) ||
+                             (contact.tags && contact.tags.toLowerCase().includes(searchTerm)) ||
+                             (contact.comments && contact.comments.toLowerCase().includes(searchTerm));
         
-        const matchesStatus = !statusFilter || contact.status === statusFilter;
-        const matchesPriority = !priorityFilter || contact.priority === priorityFilter;
-        
-        return matchesSearch && matchesStatus && matchesPriority;
+        return matchesSearch;
     });
     
-    // Re-render table with filtered results
-    renderFilteredContactsTable(filteredContacts);
+    // Determinar la vista activa y renderizar accordingly
+    const activeView = document.querySelector('.view-toggle.active')?.id || 'listView';
+    const viewType = activeView.replace('View', '');
+    
+    switch (viewType) {
+        case 'list':
+            renderFilteredContactsTable(filteredContacts);
+            break;
+        case 'card':
+            renderFilteredContactsCards(filteredContacts);
+            break;
+        case 'grid':
+            renderFilteredContactsGrid(filteredContacts);
+            break;
+        default:
+            renderFilteredContactsTable(filteredContacts);
+    }
 }
 
 function renderFilteredContactsTable(filteredContacts) {
-    if (!contactsTableBody) return;
+    // Use global variable, but fallback to getElementById if not available
+    let tableBody = contactsTableBody || document.getElementById('contactsTableBody');
+    if (!tableBody) {
+        console.error('Contacts table body not found in renderFilteredContactsTable!');
+        return;
+    }
     
-    contactsTableBody.innerHTML = '';
+    console.log('Rendering filtered contacts table with', filteredContacts.length, 'contacts');
+    tableBody.innerHTML = '';
+    
+    if (filteredContacts.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #666;">No se encontraron contactos</td></tr>';
+        return;
+    }
     
     filteredContacts.forEach(contact => {
         const row = document.createElement('tr');
+        
+        // Process avatar
+        const avatarSrc = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        
+        // Process tags
+        const tags = contact.tags ? contact.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+        const tagsHtml = tags.map(tag => `<span class="contact-tag-small">${tag}</span>`).join('');
+        
+        // Process country with flag
+        const countryInfo = getCountryInfo(contact.country);
+        
         row.innerHTML = `
             <td><strong>${contact.name}</strong></td>
-            <td>${contact.company || '-'}</td>
+            <td class="contact-avatar-cell">
+                <img src="${avatarSrc}" alt="Avatar" class="contact-avatar-small">
+            </td>
             <td>${contact.email || '-'}</td>
             <td>${contact.phone || '-'}</td>
-            <td><span class="status-badge status-${contact.status}">${getStatusLabel(contact.status)}</span></td>
-            <td><span class="priority-badge priority-${contact.priority}">${getPriorityLabel(contact.priority)}</span></td>
+            <td class="contact-country-cell">${countryInfo}</td>
+            <td class="contact-tags-cell">${tagsHtml || '-'}</td>
+            <td class="contact-comments-cell" title="${contact.comments || ''}">${contact.comments || '-'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="edit-btn" onclick="openEditContactModal(${contact.id})">Editar</button>
@@ -340,8 +595,412 @@ function renderFilteredContactsTable(filteredContacts) {
                 </div>
             </td>
         `;
-        contactsTableBody.appendChild(row);
+        tableBody.appendChild(row);
     });
+}
+
+// Contact view functions
+function changeContactView(viewType) {
+    console.log('=== CHANGE CONTACT VIEW DEBUG ===');
+    console.log('Changing to view type:', viewType);
+    console.log('Current contacts array:', contacts);
+    console.log('Current contactsTableBody:', contactsTableBody);
+    
+    // Remove active class from all toggle buttons
+    document.querySelectorAll('.view-toggle').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to clicked button
+    const activeButton = document.getElementById(viewType + 'View');
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Get contacts container
+    const contactsContainer = document.getElementById('contactsContainer');
+    
+    // Apply view type
+    switch (viewType) {
+        case 'list':
+            contactsContainer.className = 'contacts-table-container';
+            // Recreate table structure if needed
+            if (!contactsContainer.querySelector('table')) {
+                contactsContainer.innerHTML = `
+                    <table id="contactsTable" class="contacts-table resizable-table">
+                        <thead>
+                            <tr>
+                                <th class="resizable-column" data-min-width="150">
+                                    <span>Nombre completo</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th class="resizable-column" data-min-width="80">
+                                    <span>Avatar</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th class="resizable-column" data-min-width="180">
+                                    <span>Email</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th class="resizable-column" data-min-width="120">
+                                    <span>Teléfono</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th class="resizable-column" data-min-width="100">
+                                    <span>País</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th class="resizable-column" data-min-width="120">
+                                    <span>Etiquetas</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th class="resizable-column" data-min-width="150">
+                                    <span>Comentarios</span>
+                                    <div class="column-resizer"></div>
+                                </th>
+                                <th data-min-width="100">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contactsTableBody">
+                        </tbody>
+                    </table>
+                `;
+                // Re-asignar la referencia global
+                contactsTableBody = document.getElementById('contactsTableBody');
+                console.log('Reassigned contactsTableBody:', contactsTableBody);
+                // Re-inicializar funcionalidades de la tabla
+                initializeResizableColumns();
+            }
+            renderContactsTable();
+            break;
+        case 'card':
+            contactsContainer.className = 'contacts-card-container';
+            renderContactsCards();
+            break;
+        case 'grid':
+            contactsContainer.className = 'contacts-grid-container';
+            renderContactsGrid();
+            break;
+    }
+    
+    console.log('Contact view change completed. Final contactsTableBody:', contactsTableBody);
+}
+
+function renderContactsCards() {
+    const contactsContainer = document.getElementById('contactsContainer');
+    
+    const cardsHTML = contacts.map(contact => {
+        const countryInfo = getCountryInfo(contact.country);
+        const avatarSrc = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        
+        const tagsArray = contact.tags ? contact.tags.split(',').map(tag => tag.trim()) : [];
+        const tagsHtml = tagsArray.map(tag => `<span class="contact-tag">${tag}</span>`).join('');
+        
+        return `
+            <div class="contact-card">
+                <div class="contact-card-header">
+                    <img src="${avatarSrc}" alt="Avatar" class="contact-card-avatar">
+                    <div class="contact-card-info">
+                        <h3>${contact.name}</h3>
+                        <p>${contact.email || '-'}</p>
+                    </div>
+                </div>
+                <div class="contact-card-body">
+                    <div class="contact-card-field">
+                        <strong>Teléfono:</strong> ${contact.phone || '-'}
+                    </div>
+                    <div class="contact-card-field">
+                        <strong>País:</strong> ${countryInfo}
+                    </div>
+                    <div class="contact-card-field">
+                        <strong>Etiquetas:</strong> ${tagsHtml || '-'}
+                    </div>
+                    <div class="contact-card-field">
+                        <strong>Comentarios:</strong> ${contact.comments || '-'}
+                    </div>
+                </div>
+                <div class="contact-card-actions">
+                    <button class="edit-btn" onclick="openEditContactModal(${contact.id})">Editar</button>
+                    <button class="delete-btn" onclick="openDeleteContactModal(${contact.id})">Eliminar</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    contactsContainer.innerHTML = `<div class="contacts-cards-grid">${cardsHTML}</div>`;
+}
+
+function renderContactsGrid() {
+    const contactsContainer = document.getElementById('contactsContainer');
+    
+    const gridHTML = contacts.map(contact => {
+        const countryInfo = getCountryInfo(contact.country);
+        const avatarSrc = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        
+        return `
+            <div class="contact-grid-item" onclick="openEditContactModal(${contact.id})">
+                <img src="${avatarSrc}" alt="Avatar" class="contact-grid-avatar">
+                <h4>${contact.name}</h4>
+                <p>${contact.email || '-'}</p>
+                <div class="contact-grid-country">${countryInfo}</div>
+            </div>
+        `;
+    }).join('');
+    
+    contactsContainer.innerHTML = `<div class="contacts-grid">${gridHTML}</div>`;
+}
+
+function renderFilteredContactsCards(filteredContacts) {
+    const contactsContainer = document.getElementById('contactsContainer');
+    
+    const cardsHTML = filteredContacts.map(contact => {
+        const countryInfo = getCountryInfo(contact.country);
+        const avatarSrc = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        
+        const tagsArray = contact.tags ? contact.tags.split(',').map(tag => tag.trim()) : [];
+        const tagsHtml = tagsArray.map(tag => `<span class="contact-tag">${tag}</span>`).join('');
+        
+        return `
+            <div class="contact-card">
+                <div class="contact-card-header">
+                    <img src="${avatarSrc}" alt="Avatar" class="contact-card-avatar">
+                    <div class="contact-card-info">
+                        <h3>${contact.name}</h3>
+                        <p>${contact.email || '-'}</p>
+                    </div>
+                </div>
+                <div class="contact-card-body">
+                    <div class="contact-card-field">
+                        <strong>Teléfono:</strong> ${contact.phone || '-'}
+                    </div>
+                    <div class="contact-card-field">
+                        <strong>País:</strong> ${countryInfo}
+                    </div>
+                    <div class="contact-card-field">
+                        <strong>Etiquetas:</strong> ${tagsHtml || '-'}
+                    </div>
+                    <div class="contact-card-field">
+                        <strong>Comentarios:</strong> ${contact.comments || '-'}
+                    </div>
+                </div>
+                <div class="contact-card-actions">
+                    <button class="edit-btn" onclick="openEditContactModal(${contact.id})">Editar</button>
+                    <button class="delete-btn" onclick="openDeleteContactModal(${contact.id})">Eliminar</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    contactsContainer.innerHTML = `<div class="contacts-cards-grid">${cardsHTML}</div>`;
+}
+
+function renderFilteredContactsGrid(filteredContacts) {
+    const contactsContainer = document.getElementById('contactsContainer');
+    
+    const gridHTML = filteredContacts.map(contact => {
+        const countryInfo = getCountryInfo(contact.country);
+        const avatarSrc = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        
+        return `
+            <div class="contact-grid-item" onclick="openEditContactModal(${contact.id})">
+                <img src="${avatarSrc}" alt="Avatar" class="contact-grid-avatar">
+                <h4>${contact.name}</h4>
+                <p>${contact.email || '-'}</p>
+                <div class="contact-grid-country">${countryInfo}</div>
+            </div>
+        `;
+    }).join('');
+    
+    contactsContainer.innerHTML = `<div class="contacts-grid">${gridHTML}</div>`;
+}
+
+// User view functions
+function changeUserView(viewType) {
+    // Remove active class from all toggle buttons
+    document.querySelectorAll('#users-tab .view-toggle').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to clicked button
+    const activeButton = document.getElementById('user' + viewType.charAt(0).toUpperCase() + viewType.slice(1) + 'View');
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Get users container
+    const usersContainer = document.getElementById('usersContainer');
+    
+    // Apply view type
+    switch (viewType) {
+        case 'list':
+            usersContainer.className = 'users-table-container';
+            // Recreate table structure if needed
+            if (!usersContainer.querySelector('table')) {
+                usersContainer.innerHTML = `
+                    <table id="usersTable" class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Avatar</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Género</th>
+                                <th>Rol</th>
+                                <th>Fecha de Registro</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                        </tbody>
+                    </table>
+                `;
+            }
+            renderUsersTable();
+            break;
+        case 'card':
+            usersContainer.className = 'users-card-container';
+            renderUsersCards();
+            break;
+        case 'grid':
+            usersContainer.className = 'users-grid-container';
+            renderUsersGrid();
+            break;
+    }
+}
+
+function changeTagView(viewType) {
+    console.log('=== CHANGE TAG VIEW DEBUG ===');
+    console.log('Changing to view type:', viewType);
+    console.log('Current tags array:', tags);
+    
+    // Remove active class from all toggle buttons
+    const tagButtons = document.querySelectorAll('#tags-tab .view-toggle');
+    tagButtons.forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to clicked button
+    const activeButton = document.getElementById('tag' + viewType.charAt(0).toUpperCase() + viewType.slice(1) + 'View');
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Get tags container
+    const tagsContainer = document.getElementById('tagsContainer');
+    
+    // Apply view type
+    switch (viewType) {
+        case 'list':
+            tagsContainer.className = 'tags-table-container';
+            // Recreate table structure if needed
+            if (!tagsContainer.querySelector('table')) {
+                tagsContainer.innerHTML = `
+                    <table id="tagsTable" class="tags-table">
+                        <thead>
+                            <tr>
+                                <th>Color</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Uso</th>
+                                <th>Descripción</th>
+                                <th>Creada por</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tagsTableBody">
+                        </tbody>
+                    </table>
+                `;
+            }
+            // Reassign global references after recreating the DOM
+            tagsTableBody = document.getElementById('tagsTableBody');
+            renderTagsTable();
+            break;
+        case 'card':
+            tagsContainer.className = 'tags-card-container';
+            renderTagsCards();
+            break;
+        case 'grid':
+            tagsContainer.className = 'tags-grid-container';
+            renderTagsGrid();
+            break;
+    }
+    
+    console.log('View change completed. Tags table body:', tagsTableBody);
+}
+
+function renderUsersCards() {
+    const usersContainer = document.getElementById('usersContainer');
+    
+    const cardsHTML = users.map(user => {
+        const avatarElement = user.avatar ? 
+            `<img src="${user.avatar}" alt="${user.name}" class="user-card-avatar">` :
+            `<div class="user-card-avatar-placeholder">${user.name.charAt(0)}</div>`;
+            
+        const genderElement = user.gender ? 
+            `<span class="gender-badge gender-${user.gender}">${getGenderLabel(user.gender)}</span>` :
+            '<span class="gender-badge gender-no_especifica">-</span>';
+        
+        const isCurrentUser = currentUser && currentUser.id === user.id;
+        
+        return `
+            <div class="user-card">
+                <div class="user-card-header">
+                    ${avatarElement}
+                    <div class="user-card-info">
+                        <h3>${user.name}</h3>
+                        <p>${user.email}</p>
+                    </div>
+                </div>
+                <div class="user-card-body">
+                    <div class="user-card-field">
+                        <strong>Género:</strong> ${genderElement}
+                    </div>
+                    <div class="user-card-field">
+                        <strong>Rol:</strong> 
+                        <span class="role-badge role-${user.role}">
+                            ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
+                        </span>
+                    </div>
+                    <div class="user-card-field">
+                        <strong>Registro:</strong> ${formatDate(user.created_at)}
+                    </div>
+                </div>
+                <div class="user-card-actions">
+                    <button class="edit-btn" onclick="openEditUserModal(${user.id})">Editar</button>
+                    <button class="delete-btn" onclick="openDeleteUserModal(${user.id})" 
+                            ${isCurrentUser ? 'disabled title="No puedes eliminar tu propia cuenta"' : ''}>
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    usersContainer.innerHTML = `<div class="users-cards-grid">${cardsHTML}</div>`;
+}
+
+function renderUsersGrid() {
+    const usersContainer = document.getElementById('usersContainer');
+    
+    const gridHTML = users.map(user => {
+        const avatarElement = user.avatar ? 
+            `<img src="${user.avatar}" alt="${user.name}" class="user-grid-avatar">` :
+            `<div class="user-grid-avatar-placeholder">${user.name.charAt(0)}</div>`;
+        
+        return `
+            <div class="user-grid-item" onclick="openEditUserModal(${user.id})">
+                ${avatarElement}
+                <h4>${user.name}</h4>
+                <p>${user.email}</p>
+                <div class="user-grid-role">
+                    <span class="role-badge role-${user.role}">
+                        ${user.role === 'admin' ? 'Admin' : 'Usuario'}
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    usersContainer.innerHTML = `<div class="users-grid">${gridHTML}</div>`;
 }
 
 function getStatusLabel(status) {
@@ -364,14 +1023,49 @@ function getPriorityLabel(priority) {
 }
 
 // Contact Modal Functions
+async function loadContactTags() {
+    try {
+        const result = await window.electronAPI.getAllTags();
+        const contactTagsSelect = document.getElementById('contactTags');
+        
+        if (result.success && contactTagsSelect) {
+            // Limpiar opciones existentes
+            contactTagsSelect.innerHTML = '';
+            
+            // Filtrar solo etiquetas para contactos y ambos
+            const contactTags = result.data.filter(tag => tag.usage === 'contacts' || tag.usage === 'both');
+            
+            contactTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.name;
+                option.textContent = tag.name;
+                option.style.color = tag.color;
+                contactTagsSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando etiquetas para contactos:', error);
+    }
+}
+
 function openAddContactModal() {
     isEditing = false;
     editingContactId = null;
     
     document.getElementById('contactModalTitle').textContent = 'Agregar Contacto';
     contactForm.reset();
+    
+    // Reset avatar to default
+    const avatarImage = document.getElementById('contactAvatarImage');
+    if (avatarImage) {
+        avatarImage.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+    }
+    
     contactModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
+    
+    // Cargar etiquetas disponibles
+    loadContactTags();
     
     // Clear any active label classes
     setTimeout(() => {
@@ -386,16 +1080,6 @@ function clearLabelsPositioning() {
         const label = input.nextElementSibling;
         if (label && label.tagName === 'LABEL') {
             label.classList.remove('active');
-        }
-    });
-    
-    // Clear select labels
-    const selects = document.querySelectorAll('#contactModal select');
-    selects.forEach(select => {
-        const label = select.nextElementSibling;
-        if (label && label.tagName === 'LABEL') {
-            label.classList.remove('active');
-            select.classList.remove('has-value');
         }
     });
     
@@ -423,17 +1107,26 @@ function openEditContactModal(contactId) {
     document.getElementById('contactName').value = contact.name || '';
     document.getElementById('contactEmail').value = contact.email || '';
     document.getElementById('contactPhone').value = contact.phone || '';
-    document.getElementById('contactCompany').value = contact.company || '';
-    document.getElementById('contactPosition').value = contact.position || '';
-    document.getElementById('contactWebsite').value = contact.website || '';
-    document.getElementById('contactAddress').value = contact.address || '';
-    document.getElementById('contactCity').value = contact.city || '';
     document.getElementById('contactCountry').value = contact.country || '';
-    document.getElementById('contactStatus').value = contact.status || 'lead';
-    document.getElementById('contactPriority').value = contact.priority || 'medium';
-    document.getElementById('contactSource').value = contact.source || '';
-    document.getElementById('contactTags').value = contact.tags || '';
-    document.getElementById('contactNotes').value = contact.notes || '';
+    document.getElementById('contactComments').value = contact.comments || '';
+    
+    // Set avatar
+    const avatarImage = document.getElementById('contactAvatarImage');
+    if (avatarImage) {
+        avatarImage.src = contact.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+    }
+    
+    // Cargar etiquetas y después seleccionar las del contacto
+    loadContactTags().then(() => {
+        // Seleccionar las etiquetas del contacto actual
+        const contactTagsSelect = document.getElementById('contactTags');
+        if (contact.tags && contactTagsSelect) {
+            const currentTags = contact.tags.split(',').map(tag => tag.trim());
+            Array.from(contactTagsSelect.options).forEach(option => {
+                option.selected = currentTags.includes(option.text);
+            });
+        }
+    });
     
     contactModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -478,8 +1171,13 @@ function openDeleteContactModal(contactId) {
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) return;
     
-    editingContactId = contactId;
-    document.getElementById('deleteInfo').textContent = `${contact.name} (${contact.company || 'Sin empresa'})`;
+    document.getElementById('deleteInfo').innerHTML = `
+        <strong>Contacto:</strong> ${contact.name}<br>
+        <strong>Email:</strong> ${contact.email || 'Sin email'}
+    `;
+    
+    // Store the ID for deletion
+    window.itemToDelete = { type: 'contact', id: contactId };
     
     deleteModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -488,24 +1186,48 @@ function openDeleteContactModal(contactId) {
 async function handleContactFormSubmit(e) {
     e.preventDefault();
     
+    console.log('=== CONTACT FORM SUBMIT DEBUG ===');
+    
     const formData = new FormData(contactForm);
+    
+    // Get avatar data
+    const avatarImage = document.getElementById('contactAvatarImage');
+    const defaultAvatarSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cccccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+    const avatarSrc = (avatarImage && avatarImage.src !== defaultAvatarSrc) ? avatarImage.src : null;
+    
+    console.log('Avatar image element:', avatarImage);
+    console.log('Avatar src:', avatarSrc);
+    
+    // Get selected tags from multi-select
+    const tagsSelect = document.getElementById('contactTags');
+    console.log('Tags select element:', tagsSelect);
+    console.log('Selected options:', tagsSelect ? tagsSelect.selectedOptions : 'Element not found');
+    
+    let selectedTags = [];
+    let tagsString = '';
+    
+    if (tagsSelect && tagsSelect.selectedOptions) {
+        selectedTags = Array.from(tagsSelect.selectedOptions).map(option => option.textContent);
+        tagsString = selectedTags.join(', ');
+    } else {
+        console.error('Tags select element not found or has no selectedOptions');
+    }
+    
+    console.log('Selected tags:', selectedTags);
+    console.log('Tags string:', tagsString);
+    
     const contactData = {
         name: formData.get('name'),
         email: formData.get('email'),
         phone: formData.get('phone'),
-        company: formData.get('company'),
-        position: formData.get('position'),
-        website: formData.get('website'),
-        address: formData.get('address'),
-        city: formData.get('city'),
         country: formData.get('country'),
-        status: formData.get('status'),
-        priority: formData.get('priority'),
-        source: formData.get('source'),
-        tags: formData.get('tags'),
-        notes: formData.get('notes'),
+        tags: tagsString,
+        comments: formData.get('comments'),
+        avatar: avatarSrc,
         created_by: currentUser.id
     };
+    
+    console.log('Contact data to submit:', contactData);
     
     if (!contactData.name) {
         showError('El nombre es requerido');
@@ -522,7 +1244,12 @@ async function handleContactFormSubmit(e) {
 
 async function createContact(contactData) {
     try {
+        console.log('=== CREATE CONTACT DEBUG ===');
+        console.log('Data being sent:', contactData);
+        
         const result = await window.electronAPI.createContact(contactData);
+        
+        console.log('Result from backend:', result);
         
         if (result.success) {
             closeModals();
@@ -530,17 +1257,23 @@ async function createContact(contactData) {
             await loadContactStats();
             showSuccessMessage('Contacto creado exitosamente');
         } else {
+            console.error('Error from backend:', result.error);
             showError(result.error || 'Error al crear contacto');
         }
     } catch (error) {
         console.error('Error creando contacto:', error);
-        showError('Error de conexión al crear contacto');
+        showError('Error de conexión al crear contacto: ' + error.message);
     }
 }
 
 async function updateContact(contactData) {
     try {
+        console.log('=== UPDATE CONTACT DEBUG ===');
+        console.log('Data being sent:', contactData);
+        
         const result = await window.electronAPI.updateContact(contactData);
+        
+        console.log('Result from backend:', result);
         
         if (result.success) {
             closeModals();
@@ -548,11 +1281,12 @@ async function updateContact(contactData) {
             await loadContactStats();
             showSuccessMessage('Contacto actualizado exitosamente');
         } else {
+            console.error('Error from backend:', result.error);
             showError(result.error || 'Error al actualizar contacto');
         }
     } catch (error) {
         console.error('Error actualizando contacto:', error);
-        showError('Error de conexión al actualizar contacto');
+        showError('Error de conexión al actualizar contacto: ' + error.message);
     }
 }
 
@@ -587,14 +1321,15 @@ async function loadUsers() {
 }
 
 function renderUsersTable() {
-    if (!usersTableBody) {
+    let usersTableBodyElement = document.getElementById('usersTableBody');
+    if (!usersTableBodyElement) {
         return;
     }
     
-    usersTableBody.innerHTML = '';
+    usersTableBodyElement.innerHTML = '';
     
     if (!users || users.length === 0) {
-        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #666;">No hay usuarios para mostrar</td></tr>';
+        usersTableBodyElement.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #666;">No hay usuarios para mostrar</td></tr>';
         return;
     }
     
@@ -604,10 +1339,116 @@ function renderUsersTable() {
         // Verificar currentUser antes de usarlo
         const isCurrentUser = currentUser && currentUser.id === user.id;
         
+        // Generate avatar or placeholder
+        const avatarElement = user.avatar ? 
+            `<img src="${user.avatar}" alt="${user.name}" class="user-avatar">` :
+            `<div class="user-avatar-placeholder">${user.name.charAt(0)}</div>`;
+            
+        // Gender badge
+        const genderElement = user.gender ? 
+            `<span class="gender-badge gender-${user.gender}">${getGenderLabel(user.gender)}</span>` :
+            '<span class="gender-badge gender-no_especifica">-</span>';
+        
         row.innerHTML = `
-            <td>${user.id}</td>
+            <td>${avatarElement}</td>
             <td>${user.name}</td>
             <td>${user.email}</td>
+            <td>${genderElement}</td>
+            <td>
+                <span class="role-badge role-${user.role}">
+                    ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
+                </span>
+            </td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="edit-btn" onclick="openEditUserModal(${user.id})">Editar</button>
+                    <button class="delete-btn" onclick="openDeleteUserModal(${user.id})" 
+                            ${isCurrentUser ? 'disabled title="No puedes eliminar tu propia cuenta"' : ''}>
+                        Eliminar
+                    </button>
+                </div>
+            </td>
+        `;
+        usersTableBodyElement.appendChild(row);
+    });
+}
+
+function updateUserStats() {
+    const totalUsers = users.length;
+    const totalAdmins = users.filter(user => user.role === 'admin').length;
+    const totalRegularUsers = users.filter(user => user.role === 'user').length;
+    
+    animateNumber(totalUsersElement, totalUsers);
+    animateNumber(totalAdminsElement, totalAdmins);
+    animateNumber(totalRegularUsersElement, totalRegularUsers);
+}
+
+// User Filters
+function filterUsers() {
+    console.log('=== FILTER USERS DEBUG ===');
+    console.log('Global users array:', users);
+    
+    if (!users || !Array.isArray(users)) {
+        console.error('Users array not available for filtering');
+        return;
+    }
+    
+    const searchTerm = document.getElementById('usersSearch')?.value.toLowerCase() || '';
+    const roleFilter = document.getElementById('roleFilter')?.value || '';
+    const genderFilter = document.getElementById('genderFilter')?.value || '';
+    
+    console.log('Search term:', searchTerm);
+    console.log('Role filter:', roleFilter);
+    console.log('Gender filter:', genderFilter);
+    
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = user.name.toLowerCase().includes(searchTerm) ||
+                             user.email.toLowerCase().includes(searchTerm);
+        
+        const matchesRole = !roleFilter || user.role === roleFilter;
+        const matchesGender = !genderFilter || user.gender === genderFilter;
+        
+        return matchesSearch && matchesRole && matchesGender;
+    });
+    
+    console.log('Filtered users count:', filteredUsers.length);
+    
+    // Re-render table with filtered results
+    renderFilteredUsersTable(filteredUsers);
+}
+
+function renderFilteredUsersTable(filteredUsers) {
+    if (!usersTableBody) return;
+    
+    usersTableBody.innerHTML = '';
+    
+    if (filteredUsers.length === 0) {
+        usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #666;">No se encontraron usuarios</td></tr>';
+        return;
+    }
+    
+    filteredUsers.forEach(user => {
+        const row = document.createElement('tr');
+        
+        // Verificar currentUser antes de usarlo
+        const isCurrentUser = currentUser && currentUser.id === user.id;
+        
+        // Generate avatar or placeholder
+        const avatarElement = user.avatar ? 
+            `<img src="${user.avatar}" alt="${user.name}" class="user-avatar">` :
+            `<div class="user-avatar-placeholder">${user.name.charAt(0)}</div>`;
+            
+        // Gender badge
+        const genderElement = user.gender ? 
+            `<span class="gender-badge gender-${user.gender}">${getGenderLabel(user.gender)}</span>` :
+            '<span class="gender-badge gender-no_especifica">-</span>';
+        
+        row.innerHTML = `
+            <td>${avatarElement}</td>
+            <td>${user.name}</td>
+            <td>${user.email}</td>
+            <td>${genderElement}</td>
             <td>
                 <span class="role-badge role-${user.role}">
                     ${user.role === 'admin' ? 'Administrador' : 'Usuario'}
@@ -628,14 +1469,41 @@ function renderUsersTable() {
     });
 }
 
-function updateUserStats() {
-    const totalUsers = users.length;
-    const totalAdmins = users.filter(user => user.role === 'admin').length;
-    const totalRegularUsers = users.filter(user => user.role === 'user').length;
-    
-    animateNumber(totalUsersElement, totalUsers);
-    animateNumber(totalAdminsElement, totalAdmins);
-    animateNumber(totalRegularUsersElement, totalRegularUsers);
+function getGenderLabel(gender) {
+    const labels = {
+        'masculino': 'Masculino',
+        'femenino': 'Femenino',
+        'otro': 'Otro',
+        'no_especifica': 'No especifica'
+    };
+    return labels[gender] || '-';
+}
+
+// Avatar handling
+function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            showError('Por favor selecciona un archivo de imagen válido');
+            return;
+        }
+        
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showError('La imagen debe ser menor a 5MB');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const avatarPreview = document.getElementById('avatarPreview');
+            if (avatarPreview) {
+                avatarPreview.src = e.target.result;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
 }
 
 // ============ CHARTS ============
@@ -881,6 +1749,12 @@ function openAddUserModal() {
     document.getElementById('passwordGroup').style.display = 'block';
     document.getElementById('userPassword').required = true;
     
+    // Reset avatar preview
+    const avatarPreview = document.getElementById('avatarPreview');
+    if (avatarPreview) {
+        avatarPreview.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'%3E%3C/path%3E%3C/svg%3E";
+    }
+    
     userForm.reset();
     userModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -901,6 +1775,17 @@ function openEditUserModal(userId) {
     document.getElementById('userName').value = user.name;
     document.getElementById('userEmail').value = user.email;
     document.getElementById('userRole').value = user.role;
+    document.getElementById('userGender').value = user.gender || '';
+    
+    // Set avatar preview
+    const avatarPreview = document.getElementById('avatarPreview');
+    if (avatarPreview) {
+        if (user.avatar) {
+            avatarPreview.src = user.avatar;
+        } else {
+            avatarPreview.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'%3E%3C/path%3E%3C/svg%3E";
+        }
+    }
     
     userModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -915,8 +1800,14 @@ function openDeleteUserModal(userId) {
         return;
     }
     
-    editingUserId = userId;
-    document.getElementById('deleteInfo').textContent = `${user.name} (${user.email})`;
+    document.getElementById('deleteInfo').innerHTML = `
+        <strong>Usuario:</strong> ${user.name}<br>
+        <strong>Email:</strong> ${user.email}<br>
+        <strong>Rol:</strong> ${getRoleLabel(user.role)}
+    `;
+    
+    // Store the ID for deletion
+    window.itemToDelete = { type: 'user', id: userId };
     
     deleteModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -925,20 +1816,49 @@ function openDeleteUserModal(userId) {
 async function handleUserFormSubmit(e) {
     e.preventDefault();
     
+    console.log('=== USER FORM SUBMIT DEBUG ===');
+    
     const formData = new FormData(userForm);
+    
+    // Log all form data
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+    
     const userData = {
         name: formData.get('name'),
         email: formData.get('email'),
-        role: formData.get('role')
+        role: formData.get('role'),
+        gender: formData.get('gender')
     };
     
+    console.log('User data before avatar:', userData);
+    
+    // Handle avatar
+    const avatarPreview = document.getElementById('avatarPreview');
+    const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'%3E%3C/path%3E%3C/svg%3E";
+    
+    console.log('Avatar preview element:', avatarPreview);
+    console.log('Avatar preview src:', avatarPreview?.src);
+    console.log('Default avatar SVG:', defaultAvatarSvg);
+    
+    if (avatarPreview && avatarPreview.src && avatarPreview.src !== defaultAvatarSvg) {
+        userData.avatar = avatarPreview.src;
+        console.log('Avatar added to userData:', userData.avatar);
+    } else {
+        console.log('No avatar set or using default');
+    }
+    
+    console.log('Final userData:', userData);
+    
     if (!userData.name || !userData.email || !userData.role) {
-        showError('Por favor, completa todos los campos');
+        showError('Por favor, completa todos los campos obligatorios');
         return;
     }
     
     if (isEditing) {
         userData.id = editingUserId;
+        console.log('Updating user with ID:', editingUserId);
         await updateUser(userData);
     } else {
         userData.password = formData.get('password');
@@ -950,30 +1870,42 @@ async function handleUserFormSubmit(e) {
             showError('La contraseña debe tener al menos 6 caracteres');
             return;
         }
+        console.log('Creating new user');
         await createUser(userData);
     }
 }
 
 async function createUser(userData) {
     try {
+        console.log('=== CREATE USER DEBUG ===');
+        console.log('Data being sent to backend:', userData);
+        
         const result = await window.electronAPI.createUser(userData);
+        
+        console.log('Result from backend:', result);
         
         if (result.success) {
             closeModals();
             await loadUsers();
             showSuccessMessage('Usuario creado exitosamente');
         } else {
+            console.error('Error from backend:', result.error);
             showError(result.error || 'Error al crear usuario');
         }
     } catch (error) {
         console.error('Error creando usuario:', error);
-        showError('Error de conexión al crear usuario');
+        showError('Error de conexión al crear usuario: ' + error.message);
     }
 }
 
 async function updateUser(userData) {
     try {
+        console.log('=== UPDATE USER DEBUG ===');
+        console.log('Data being sent to backend:', userData);
+        
         const result = await window.electronAPI.updateUser(userData);
+        
+        console.log('Result from backend:', result);
         
         if (result.success) {
             closeModals();
@@ -989,10 +1921,14 @@ async function updateUser(userData) {
 }
 
 async function confirmDelete() {
-    if (editingUserId) {
+    const itemToDelete = window.itemToDelete;
+    
+    if (!itemToDelete) return;
+    
+    if (itemToDelete.type === 'user') {
         // Delete user
         try {
-            const result = await window.electronAPI.deleteUser(editingUserId);
+            const result = await window.electronAPI.deleteUser(itemToDelete.id);
             
             if (result.success) {
                 closeModals();
@@ -1005,10 +1941,10 @@ async function confirmDelete() {
             console.error('Error eliminando usuario:', error);
             showError('Error de conexión al eliminar usuario');
         }
-    } else if (editingContactId) {
+    } else if (itemToDelete.type === 'contact') {
         // Delete contact
         try {
-            const result = await window.electronAPI.deleteContact(editingContactId);
+            const result = await window.electronAPI.deleteContact(itemToDelete.id);
             
             if (result.success) {
                 closeModals();
@@ -1022,7 +1958,26 @@ async function confirmDelete() {
             console.error('Error eliminando contacto:', error);
             showError('Error de conexión al eliminar contacto');
         }
+    } else if (itemToDelete.type === 'tag') {
+        // Delete tag
+        try {
+            const index = tags.findIndex(t => t.id === itemToDelete.id);
+            if (index !== -1) {
+                tags.splice(index, 1);
+                closeModals();
+                renderTagsTable();
+                renderTagsGrid();
+                updateTagStats();
+                showSuccessMessage('Etiqueta eliminada exitosamente');
+            }
+        } catch (error) {
+            console.error('Error eliminando etiqueta:', error);
+            showError('Error al eliminar etiqueta');
+        }
     }
+    
+    // Clear the item to delete
+    window.itemToDelete = null;
 }
 
 // ============ MODAL MANAGEMENT ============
@@ -1043,6 +1998,7 @@ function closeDeleteModal() {
 function closeModals() {
     closeUserModal();
     closeContactModal();
+    closeTagModal();
     closeDeleteModal();
 }
 
@@ -1064,13 +2020,7 @@ function showLoading(show) {
 }
 
 function showError(message) {
-    const errorElement = document.getElementById('contact-form-error') || document.getElementById('user-form-error');
-    if (errorElement) {
-        errorElement.textContent = message;
-        errorElement.style.display = 'block';
-    } else {
-        showToast(message, 'error');
-    }
+    showToast(message, 'error');
 }
 
 function hideError() {
@@ -1109,23 +2059,40 @@ function showToast(message, type = 'info') {
         border-radius: 12px;
         border-left: 4px solid ${color.border};
         box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-        z-index: 2001;
+        z-index: 10001;
+        min-width: 280px;
         max-width: 400px;
         font-weight: 500;
+        font-size: 14px;
+        line-height: 1.4;
         font-family: 'Inter', sans-serif;
         animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        word-wrap: break-word;
     `;
     
     toast.textContent = message;
-    document.body.appendChild(toast);
     
-    setTimeout(() => {
+    // Add click to close functionality
+    const closeToast = () => {
         toast.style.animation = 'slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
         }, 300);
+        clearTimeout(autoCloseTimer);
+    };
+    
+    toast.addEventListener('click', closeToast);
+    
+    document.body.appendChild(toast);
+    
+    // Auto-close after 4 seconds
+    const autoCloseTimer = setTimeout(() => {
+        if (toast.parentNode) {
+            closeToast();
+        }
     }, 4000);
 }
 
@@ -1155,3 +2122,408 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// ============ TAGS MANAGEMENT ============
+
+function openAddTagModal() {
+    isEditing = false;
+    editingTagId = null;
+    
+    document.getElementById('tagModalTitle').textContent = 'Nueva Etiqueta';
+    tagForm.reset();
+    document.getElementById('tagColor').value = '#4FACFE';
+    updateTagPreview();
+    
+    tagModal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function openEditTagModal(tagId) {
+    const tag = tags.find(t => t.id === tagId);
+    if (!tag) return;
+    
+    isEditing = true;
+    editingTagId = tagId;
+    
+    document.getElementById('tagModalTitle').textContent = 'Editar Etiqueta';
+    
+    // Fill form with tag data
+    document.getElementById('tagId').value = tag.id;
+    document.getElementById('tagName').value = tag.name || '';
+    document.getElementById('tagColor').value = tag.color || '#4FACFE';
+    document.getElementById('tagType').value = tag.type || '';
+    document.getElementById('tagUsage').value = tag.usage || '';
+    document.getElementById('tagDescription').value = tag.description || '';
+    
+    updateTagPreview();
+    
+    tagModal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeTagModal() {
+    tagModal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    tagForm.reset();
+    updateTagPreview();
+}
+
+function updateTagPreview() {
+    const nameInput = document.getElementById('tagName');
+    const colorInput = document.getElementById('tagColor');
+    const preview = document.getElementById('tagPreview');
+    
+    if (preview) {
+        const name = nameInput?.value || 'Etiqueta de ejemplo';
+        const color = colorInput?.value || '#4FACFE';
+        
+        preview.textContent = name;
+        preview.style.backgroundColor = color;
+        preview.style.color = getContrastColor(color);
+    }
+}
+
+function getContrastColor(hexColor) {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Calculate brightness
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    
+    return brightness > 128 ? '#000000' : '#FFFFFF';
+}
+
+async function handleTagFormSubmit(e) {
+    e.preventDefault();
+    
+    console.log('Tag form submitted');
+    console.log('Form element:', tagForm);
+    console.log('Is editing:', isEditing);
+    console.log('Editing tag ID:', editingTagId);
+    
+    const formData = new FormData(tagForm);
+    console.log('Form data entries:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    const tagData = {
+        name: formData.get('name'),
+        color: formData.get('color'),
+        type: formData.get('type'),
+        usage: formData.get('usage'),
+        description: formData.get('description'),
+        created_by: currentUser.id
+    };
+    
+    console.log('Tag data:', tagData);
+    
+    if (!tagData.name || !tagData.type || !tagData.usage) {
+        showError('Todos los campos requeridos deben completarse');
+        return;
+    }
+    
+    if (isEditing) {
+        tagData.id = editingTagId;
+        console.log('Updating tag with data:', tagData);
+        await updateTag(tagData);
+    } else {
+        console.log('Creating new tag with data:', tagData);
+        await createTag(tagData);
+    }
+}
+
+async function createTag(tagData) {
+    try {
+        const result = await window.electronAPI.createTag(tagData);
+        
+        if (result.success) {
+            closeTagModal();
+            await loadTags();
+            showSuccessMessage('Etiqueta creada exitosamente');
+        } else {
+            showError(result.error || 'Error al crear etiqueta');
+        }
+    } catch (error) {
+        console.error('Error creando etiqueta:', error);
+        showError('Error de conexión al crear etiqueta');
+    }
+}
+
+async function updateTag(tagData) {
+    try {
+        const result = await window.electronAPI.updateTag(tagData);
+        
+        if (result.success) {
+            closeTagModal();
+            await loadTags();
+            showSuccessMessage('Etiqueta actualizada exitosamente');
+        } else {
+            showError(result.error || 'Error al actualizar etiqueta');
+        }
+    } catch (error) {
+        console.error('Error actualizando etiqueta:', error);
+        showError('Error de conexión al actualizar etiqueta');
+    }
+}
+
+function renderTagsGrid() {
+    const tagsContainer = document.getElementById('tagsContainer');
+    
+    const gridHTML = tags.map(tag => {
+        return `
+            <div class="tag-grid-item">
+                <div class="tag-grid-header">
+                    <div class="tag-color-indicator" style="background-color: ${tag.color}"></div>
+                    <span class="tag-name">${tag.name}</span>
+                </div>
+                <div class="tag-grid-content">
+                    <div class="tag-type">${getTagTypeLabel(tag.type)}</div>
+                    <div class="tag-usage">${getTagUsageLabel(tag.usage)}</div>
+                </div>
+                <div class="tag-grid-actions">
+                    <button class="edit-btn-small" onclick="openEditTagModal(${tag.id})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="delete-btn-small" onclick="openDeleteTagModal(${tag.id})" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    tagsContainer.innerHTML = gridHTML;
+}
+
+function renderTagsCards() {
+    const tagsContainer = document.getElementById('tagsContainer');
+    
+    const cardsHTML = tags.map(tag => {
+        return `
+            <div class="tag-card">
+                <div class="tag-card-header">
+                    <div class="tag-color-indicator" style="background-color: ${tag.color}"></div>
+                    <h3 class="tag-card-name">${tag.name}</h3>
+                    <span class="tag-card-type">${getTagTypeLabel(tag.type)}</span>
+                </div>
+                <div class="tag-card-info">
+                    <div class="tag-usage">Para: ${getTagUsageLabel(tag.usage)}</div>
+                    ${tag.description ? `<p class="tag-description">${tag.description}</p>` : '<p class="tag-description">Sin descripción</p>'}
+                </div>
+                <div class="tag-card-footer">
+                    <div class="tag-meta">
+                        <span>Por: ${currentUser ? currentUser.name : '-'}</span>
+                        <span>${new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div class="tag-card-actions">
+                        <button class="edit-btn" onclick="openEditTagModal(${tag.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="delete-btn" onclick="openDeleteTagModal(${tag.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    tagsContainer.innerHTML = cardsHTML;
+}
+
+function renderTagsTable() {
+    console.log('=== RENDER TAGS TABLE DEBUG ===');
+    console.log('Tags table body element:', tagsTableBody);
+    console.log('Tags array:', tags);
+    console.log('Tags length:', tags ? tags.length : 'undefined');
+    
+    if (!tagsTableBody) {
+        console.error('Tags table body not found!');
+        return;
+    }
+    
+    if (!tags || !Array.isArray(tags)) {
+        console.error('Tags array not available!');
+        return;
+    }
+    
+    tagsTableBody.innerHTML = '';
+    
+    tags.forEach(tag => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="tag-color-indicator" style="background-color: ${tag.color}"></div>
+            </td>
+            <td><strong>${tag.name}</strong></td>
+            <td>${getTagTypeLabel(tag.type)}</td>
+            <td>${getTagUsageLabel(tag.usage)}</td>
+            <td>${tag.description || '-'}</td>
+            <td>${currentUser ? currentUser.name : '-'}</td>
+            <td>${new Date().toLocaleDateString()}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="edit-btn" onclick="openEditTagModal(${tag.id})">Editar</button>
+                    <button class="delete-btn" onclick="openDeleteTagModal(${tag.id})">Eliminar</button>
+                </div>
+            </td>
+        `;
+        tagsTableBody.appendChild(row);
+    });
+    
+    console.log('Tags table rendered with', tags.length, 'rows');
+}
+
+function filterTags() {
+    const searchTerm = document.getElementById('tagsSearch')?.value.toLowerCase() || '';
+    const typeFilter = document.getElementById('tagTypeFilter')?.value || '';
+    const usageFilter = document.getElementById('tagUsageFilter')?.value || '';
+    
+    const filteredTags = tags.filter(tag => {
+        const matchesSearch = tag.name.toLowerCase().includes(searchTerm) ||
+                             (tag.description && tag.description.toLowerCase().includes(searchTerm));
+        
+        const matchesType = !typeFilter || tag.type === typeFilter;
+        const matchesUsage = !usageFilter || tag.usage === usageFilter;
+        
+        return matchesSearch && matchesType && matchesUsage;
+    });
+    
+    // Re-render with filtered results
+    renderFilteredTags(filteredTags);
+}
+
+function renderFilteredTags(filteredTags) {
+    // Update grid
+    if (tagsGrid) {
+        tagsGrid.innerHTML = '';
+        
+        filteredTags.forEach(tag => {
+            const tagCard = document.createElement('div');
+            tagCard.className = 'tag-card';
+            tagCard.innerHTML = `
+                <div class="tag-card-header">
+                    <span class="tag-sample" style="background-color: ${tag.color}; color: ${getContrastColor(tag.color)}">
+                        ${tag.name}
+                    </span>
+                </div>
+                <div class="tag-info">
+                    <div class="tag-type">${getTagTypeLabel(tag.type)}</div>
+                    <div class="tag-usage">Para: ${getTagUsageLabel(tag.usage)}</div>
+                    ${tag.description ? `<div class="tag-description">${tag.description}</div>` : ''}
+                </div>
+                <div class="tag-actions">
+                    <button class="tag-edit-btn" onclick="openEditTagModal(${tag.id})">
+                        <i class="fas fa-edit"></i>
+                        Editar
+                    </button>
+                    <button class="tag-delete-btn" onclick="openDeleteTagModal(${tag.id})">
+                        <i class="fas fa-trash"></i>
+                        Eliminar
+                    </button>
+                </div>
+            `;
+            tagsGrid.appendChild(tagCard);
+        });
+    }
+    
+    // Update table
+    if (tagsTableBody) {
+        tagsTableBody.innerHTML = '';
+        
+        filteredTags.forEach(tag => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="tag-color-indicator" style="background-color: ${tag.color}"></div>
+                </td>
+                <td><strong>${tag.name}</strong></td>
+                <td>${getTagTypeLabel(tag.type)}</td>
+                <td>${getTagUsageLabel(tag.usage)}</td>
+                <td>${tag.description || '-'}</td>
+                <td>${currentUser.name}</td>
+                <td>${new Date().toLocaleDateString()}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="edit-btn" onclick="openEditTagModal(${tag.id})">Editar</button>
+                        <button class="delete-btn" onclick="openDeleteTagModal(${tag.id})">Eliminar</button>
+                    </div>
+                </td>
+            `;
+            tagsTableBody.appendChild(row);
+        });
+    }
+}
+
+function getTagTypeLabel(type) {
+    const types = {
+        status: 'Estado',
+        priority: 'Prioridad',
+        category: 'Categoría',
+        role: 'Rol',
+        custom: 'Personalizada'
+    };
+    return types[type] || type;
+}
+
+function getTagUsageLabel(usage) {
+    const usages = {
+        users: 'Usuarios',
+        contacts: 'Contactos',
+        both: 'Ambos'
+    };
+    return usages[usage] || usage;
+}
+
+function updateTagStats() {
+    // Update tag statistics
+    const totalTagsElement = document.getElementById('totalTags');
+    const tagsInUseElement = document.getElementById('tagsInUse');
+    const userTagsElement = document.getElementById('userTags');
+    const contactTagsElement = document.getElementById('contactTagsCount');
+    
+    if (totalTagsElement) totalTagsElement.textContent = tags.length;
+    if (tagsInUseElement) tagsInUseElement.textContent = tags.length; // Simplified
+    if (userTagsElement) userTagsElement.textContent = tags.filter(t => t.usage === 'users' || t.usage === 'both').length;
+    if (contactTagsElement) contactTagsElement.textContent = tags.filter(t => t.usage === 'contacts' || t.usage === 'both').length;
+}
+
+function openDeleteTagModal(tagId) {
+    const tag = tags.find(t => t.id === tagId);
+    if (!tag) return;
+    
+    document.getElementById('deleteInfo').innerHTML = `
+        <strong>Etiqueta:</strong> ${tag.name}<br>
+        <strong>Tipo:</strong> ${getTagTypeLabel(tag.type)}
+    `;
+    
+    // Store the ID for deletion
+    window.itemToDelete = { type: 'tag', id: tagId };
+    
+    deleteModal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Initialize tags when switching to tags tab
+async function loadTags() {
+    try {
+        const result = await window.electronAPI.getAllTags();
+        
+        if (result.success) {
+            tags = result.data;
+        } else {
+            console.error('Error loading tags:', result.error);
+            tags = [];
+        }
+        
+        renderTagsTable();
+        updateTagStats();
+    } catch (error) {
+        console.error('Error cargando etiquetas:', error);
+        showError('Error al cargar etiquetas');
+        tags = [];
+    }
+}
