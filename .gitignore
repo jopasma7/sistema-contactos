@@ -103,3 +103,6 @@ data/users.db
 # Temporary files
 temp/
 tmp/
+check-db.js
+create_test_user.js
+*.bat

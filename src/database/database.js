@@ -102,12 +102,14 @@ class Database {
 
   createDefaultAdmin() {
     const bcrypt = require('bcrypt');
-    const email = 'admin@admin.com';
-    const password = 'admin123';
+    
+    // Crear admin por defecto
+    const adminEmail = 'admin@admin.com';
+    const adminPassword = 'admin123';
 
-    this.getUserByEmail(email, (err, user) => {
+    this.getUserByEmail(adminEmail, (err, user) => {
       if (err || !user) {
-        bcrypt.hash(password, 10, (err, hashedPassword) => {
+        bcrypt.hash(adminPassword, 10, (err, hashedPassword) => {
           if (err) {
             console.error('Error hashing admin password:', err);
             return;
@@ -118,11 +120,67 @@ class Database {
             VALUES (?, ?, ?, ?)
           `;
 
-          this.db.run(insertAdmin, ['Administrador', email, hashedPassword, 'admin'], (err) => {
+          this.db.run(insertAdmin, ['Administrador', adminEmail, hashedPassword, 'admin'], (err) => {
             if (err) {
               console.error('Error creating default admin:', err);
             } else {
               console.log('Default admin created: admin@admin.com / admin123');
+            }
+          });
+        });
+      }
+    });
+
+    // Crear usuario de prueba
+    const testEmail = 'test@test.com';
+    const testPassword = 'test123';
+
+    this.getUserByEmail(testEmail, (err, user) => {
+      if (err || !user) {
+        bcrypt.hash(testPassword, 10, (err, hashedPassword) => {
+          if (err) {
+            console.error('Error hashing test password:', err);
+            return;
+          }
+
+          const insertTest = `
+            INSERT INTO users (name, email, password, role)
+            VALUES (?, ?, ?, ?)
+          `;
+
+          this.db.run(insertTest, ['Usuario de Prueba', testEmail, hashedPassword, 'user'], (err) => {
+            if (err) {
+              console.error('Error creating test user:', err);
+            } else {
+              console.log('Test user created: test@test.com / test123');
+            }
+          });
+        });
+      }
+    });
+
+    // Crear usuario admin@test.com para el login de prueba
+    const adminTestEmail = 'admin@test.com';
+    const adminTestPassword = '123456';
+
+    this.getUserByEmail(adminTestEmail, (err, user) => {
+      if (err || !user) {
+        bcrypt.hash(adminTestPassword, 10, (err, hashedPassword) => {
+          if (err) {
+            console.error('Error hashing admin test password:', err);
+            return;
+          }
+
+          const insertAdminTest = `
+            INSERT INTO users (name, email, password, role)
+            VALUES (?, ?, ?, ?)
+          `;
+
+          this.db.run(insertAdminTest, ['Administrador de Prueba', adminTestEmail, hashedPassword, 'admin'], (err) => {
+            if (err) {
+              console.error('Error creating admin test user:', err);
+            } else {
+              console.log('Admin test user created: admin@test.com / 123456');
             }
           });
         });

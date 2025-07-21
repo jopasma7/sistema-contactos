@@ -91,15 +91,46 @@ function setupEventListeners() {
 
 async function initializeDashboard() {
     currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    console.log('Current user from localStorage:', currentUser);
     
     if (!currentUser) {
+        console.log('No current user found, redirecting to login...');
         await window.electronAPI.navigateToLogin();
         return;
+    }
+    
+    // Verificar si currentUser tiene la estructura correcta
+    if (!currentUser.id || !currentUser.name) {
+        console.warn('Current user data incomplete:', currentUser);
+        console.log('Trying to get user data from token...');
+        
+        const token = localStorage.getItem('userToken');
+        if (token) {
+            try {
+                const result = await window.electronAPI.getCurrentUser(token);
+                if (result.success) {
+                    currentUser = result.data;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    console.log('Current user updated:', currentUser);
+                } else {
+                    await window.electronAPI.navigateToLogin();
+                    return;
+                }
+            } catch (error) {
+                console.error('Error getting current user:', error);
+                await window.electronAPI.navigateToLogin();
+                return;
+            }
+        } else {
+            await window.electronAPI.navigateToLogin();
+            return;
+        }
     }
     
     initializeTheme();
     document.getElementById('userWelcome').textContent = `Bienvenido, ${currentUser.name}`;
     
+    console.log('Iniciando carga de datos...');
     await Promise.all([
         loadUsers(),
         loadContacts(),
@@ -152,6 +183,8 @@ function toggleTheme() {
 }
 
 function switchTab(tabName) {
+    console.log('Switching to tab:', tabName);
+    
     // Update active tab button
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
@@ -165,6 +198,7 @@ function switchTab(tabName) {
     // Load data based on active tab
     switch(tabName) {
         case 'users':
+            console.log('Loading users for users tab...');
             loadUsers();
             break;
         case 'contacts':
@@ -439,13 +473,17 @@ async function loadUsers() {
     showLoading(true);
     
     try {
+        console.log('Cargando usuarios...');
         const result = await window.electronAPI.getAllUsers();
+        console.log('Resultado getAllUsers:', result);
         
         if (result.success) {
             users = result.data;
+            console.log('Usuarios cargados:', users);
             renderUsersTable();
             updateUserStats();
         } else {
+            console.error('Error en result:', result.error);
             showError('Error al cargar usuarios: ' + result.error);
         }
     } catch (error) {
@@ -457,12 +495,29 @@ async function loadUsers() {
 }
 
 function renderUsersTable() {
-    if (!usersTableBody) return;
+    console.log('Renderizando tabla de usuarios...');
+    console.log('usersTableBody:', usersTableBody);
+    console.log('users array:', users);
+    
+    if (!usersTableBody) {
+        console.error('No se encontró usersTableBody element');
+        return;
+    }
     
     usersTableBody.innerHTML = '';
     
+    if (!users || users.length === 0) {
+        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #666;">No hay usuarios para mostrar</td></tr>';
+        return;
+    }
+    
     users.forEach(user => {
+        console.log('Renderizando usuario:', user);
         const row = document.createElement('tr');
+        
+        // Verificar currentUser antes de usarlo
+        const isCurrentUser = currentUser && currentUser.id === user.id;
+        
         row.innerHTML = `
             <td>${user.id}</td>
             <td>${user.name}</td>
@@ -477,7 +532,7 @@ function renderUsersTable() {
                 <div class="action-buttons">
                     <button class="edit-btn" onclick="openEditUserModal(${user.id})">Editar</button>
                     <button class="delete-btn" onclick="openDeleteUserModal(${user.id})" 
-                            ${user.id === currentUser.id ? 'disabled title="No puedes eliminar tu propia cuenta"' : ''}>
+                            ${isCurrentUser ? 'disabled title="No puedes eliminar tu propia cuenta"' : ''}>
                         Eliminar
                     </button>
                 </div>
@@ -485,6 +540,8 @@ function renderUsersTable() {
         `;
         usersTableBody.appendChild(row);
     });
+    
+    console.log('Tabla renderizada con', users.length, 'usuarios');
 }
 
 function updateUserStats() {

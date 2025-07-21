@@ -102,6 +102,19 @@ ipcMain.handle('auth:register', async (event, userData) => {
   }
 });
 
+ipcMain.handle('auth:getCurrentUser', async (event, token) => {
+  try {
+    const user = authService.verifyToken(token);
+    if (user) {
+      return { success: true, data: user };
+    } else {
+      return { success: false, error: 'Token inválido' };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('users:getAll', async () => {
   try {
     const users = await database.getAllUsers();
