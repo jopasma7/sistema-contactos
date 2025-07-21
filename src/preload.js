@@ -27,5 +27,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Navegación
   navigateToDashboard: () => ipcRenderer.invoke('navigate:dashboard'),
-  navigateToLogin: () => ipcRenderer.invoke('navigate:login')
+  navigateToLogin: () => ipcRenderer.invoke('navigate:login'),
+  navigateToRegister: () => ipcRenderer.invoke('navigate:register')
 });

@@ -122,6 +122,64 @@ class AuthService {
     }
   }
 
+  async register(userData) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Check if user already exists
+        this.db.getUserByEmail(userData.email, async (err, existingUser) => {
+          if (err) {
+            reject(new Error('Error de base de datos'));
+            return;
+          }
+
+          if (existingUser) {
+            reject(new Error('Ya existe un usuario con ese email'));
+            return;
+          }
+
+          try {
+            // Hash password
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+            // Create user data
+            const newUser = {
+              name: userData.name,
+              email: userData.email,
+              password: hashedPassword,
+              gender: userData.gender || null,
+              role: userData.role || 'user',
+              avatar: userData.avatar || null
+            };
+
+            // Insert user into database
+            this.db.createUser(newUser, (err, userId) => {
+              if (err) {
+                reject(new Error('Error al crear usuario'));
+                return;
+              }
+
+              resolve({
+                user: {
+                  id: userId,
+                  name: newUser.name,
+                  email: newUser.email,
+                  role: newUser.role
+                }
+              });
+            });
+
+          } catch (error) {
+            reject(new Error('Error al procesar datos'));
+          }
+        });
+
+      } catch (error) {
+        reject(new Error('Error interno'));
+      }
+    });
+  }
+
   generateToken(payload) {
     return jwt.sign(payload, this.jwtSecret, { expiresIn: '24h' });
   }

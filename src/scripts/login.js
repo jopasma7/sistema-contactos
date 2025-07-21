@@ -15,9 +15,16 @@ function initializeLogin() {
 function setupEventListeners() {
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
+    const showRegisterBtn = document.getElementById('showRegisterBtn');
     
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
+    }
+    
+    if (showRegisterBtn) {
+        showRegisterBtn.addEventListener('click', () => {
+            window.electronAPI.navigateToRegister();
+        });
     }
     
     // Add input animations

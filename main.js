@@ -160,6 +160,10 @@ ipcMain.handle('navigate:login', () => {
   mainWindow.loadFile('src/views/login.html');
 });
 
+ipcMain.handle('navigate:register', () => {
+  mainWindow.loadFile('src/views/register.html');
+});
+
 // IPC Handlers para gestión de contactos
 ipcMain.handle('contacts:getAll', async () => {
   try {
