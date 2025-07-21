@@ -71,6 +71,9 @@ function setupEventListeners() {
     // Delete confirmation
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
     
+    // Label positioning fixes
+    setupLabelHandlers();
+    
     // Modal close handlers
     document.querySelectorAll('.close').forEach(closeBtn => {
         closeBtn.addEventListener('click', closeModals);
@@ -85,6 +88,38 @@ function setupEventListeners() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeModals();
+        }
+    });
+}
+
+function setupLabelHandlers() {
+    // Add event listeners for inputs to handle labels
+    document.addEventListener('input', (e) => {
+        if (e.target.matches('#contactModal input, #contactModal textarea')) {
+            const label = e.target.nextElementSibling;
+            if (label && label.tagName === 'LABEL') {
+                if (e.target.value) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                }
+            }
+        }
+    });
+    
+    // Add event listeners for selects
+    document.addEventListener('change', (e) => {
+        if (e.target.matches('#contactModal select')) {
+            const label = e.target.nextElementSibling;
+            if (label && label.tagName === 'LABEL') {
+                if (e.target.value) {
+                    label.classList.add('active');
+                    e.target.classList.add('has-value');
+                } else {
+                    label.classList.remove('active');
+                    e.target.classList.remove('has-value');
+                }
+            }
         }
     });
 }
@@ -337,6 +372,41 @@ function openAddContactModal() {
     contactForm.reset();
     contactModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
+    
+    // Clear any active label classes
+    setTimeout(() => {
+        clearLabelsPositioning();
+    }, 50);
+}
+
+function clearLabelsPositioning() {
+    // Clear input labels
+    const inputs = document.querySelectorAll('#contactModal input');
+    inputs.forEach(input => {
+        const label = input.nextElementSibling;
+        if (label && label.tagName === 'LABEL') {
+            label.classList.remove('active');
+        }
+    });
+    
+    // Clear select labels
+    const selects = document.querySelectorAll('#contactModal select');
+    selects.forEach(select => {
+        const label = select.nextElementSibling;
+        if (label && label.tagName === 'LABEL') {
+            label.classList.remove('active');
+            select.classList.remove('has-value');
+        }
+    });
+    
+    // Clear textarea labels
+    const textareas = document.querySelectorAll('#contactModal textarea');
+    textareas.forEach(textarea => {
+        const label = textarea.nextElementSibling;
+        if (label && label.tagName === 'LABEL') {
+            label.classList.remove('active');
+        }
+    });
 }
 
 function openEditContactModal(contactId) {
@@ -367,6 +437,41 @@ function openEditContactModal(contactId) {
     
     contactModal.style.display = 'block';
     document.body.style.overflow = 'hidden';
+    
+    // Fix labels positioning for filled fields
+    setTimeout(() => {
+        fixLabelsPositioning();
+    }, 50);
+}
+
+function fixLabelsPositioning() {
+    // Fix input labels
+    const inputs = document.querySelectorAll('#contactModal input');
+    inputs.forEach(input => {
+        const label = input.nextElementSibling;
+        if (label && label.tagName === 'LABEL' && input.value) {
+            label.classList.add('active');
+        }
+    });
+    
+    // Fix select labels
+    const selects = document.querySelectorAll('#contactModal select');
+    selects.forEach(select => {
+        const label = select.nextElementSibling;
+        if (label && label.tagName === 'LABEL' && select.value) {
+            label.classList.add('active');
+            select.classList.add('has-value');
+        }
+    });
+    
+    // Fix textarea labels
+    const textareas = document.querySelectorAll('#contactModal textarea');
+    textareas.forEach(textarea => {
+        const label = textarea.nextElementSibling;
+        if (label && label.tagName === 'LABEL' && textarea.value) {
+            label.classList.add('active');
+        }
+    });
 }
 
 function openDeleteContactModal(contactId) {
@@ -456,6 +561,7 @@ function closeContactModal() {
     document.body.style.overflow = 'auto';
     hideError();
     contactForm.reset();
+    clearLabelsPositioning();
 }
 
 // ============ USERS MANAGEMENT (Existing code adapted) ============
