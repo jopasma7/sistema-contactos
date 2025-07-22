@@ -34,6 +34,7 @@ class Database {
     const createContactsTable = `
       CREATE TABLE IF NOT EXISTS contacts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         email TEXT,
         phone TEXT,
@@ -56,6 +57,7 @@ class Database {
         created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (assigned_to) REFERENCES users(id),
         FOREIGN KEY (created_by) REFERENCES users(id)
       )
@@ -115,6 +117,15 @@ class Database {
       } else {
         console.log('Contacts table ready');
         // Agregar columnas que puedan faltar en bases de datos existentes
+        this.db.run(`ALTER TABLE contacts ADD COLUMN user_id INTEGER`, (err) => {
+          // Ignorar error si la columna ya existe
+          if (!err) {
+            // Si se agregó la columna user_id, asignar todos los contactos existentes al primer admin
+            this.db.run(`UPDATE contacts SET user_id = 1 WHERE user_id IS NULL`, (err) => {
+              if (err) console.error('Error updating contacts user_id:', err);
+            });
+          }
+        });
         this.db.run(`ALTER TABLE contacts ADD COLUMN avatar TEXT`, (err) => {
           // Ignorar error si la columna ya existe
         });
@@ -430,15 +441,23 @@ class Database {
   }
 
   // Métodos para gestión de contactos
-  getAllContacts() {
+  getAllContacts(userId = null) {
     return new Promise((resolve, reject) => {
-      const sql = `
+      let sql = `
         SELECT c.*, u.name as assigned_to_name 
         FROM contacts c 
         LEFT JOIN users u ON c.assigned_to = u.id 
-        ORDER BY c.created_at DESC
       `;
-      this.db.all(sql, [], (err, rows) => {
+      let params = [];
+      
+      if (userId) {
+        sql += ` WHERE c.user_id = ?`;
+        params.push(userId);
+      }
+      
+      sql += ` ORDER BY c.created_at DESC`;
+      
+      this.db.all(sql, params, (err, rows) => {
         if (err) {
           reject(err);
         } else {
@@ -456,17 +475,17 @@ class Database {
   createContact(contactData) {
     return new Promise((resolve, reject) => {
       const {
-        name, email, phone, country, avatar, tags, comments, created_by
+        name, email, phone, country, avatar, tags, comments, created_by, user_id
       } = contactData;
 
       const sql = `
         INSERT INTO contacts (
-          name, email, phone, country, avatar, tags, notes, created_by, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          user_id, name, email, phone, country, avatar, tags, notes, created_by, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `;
 
       this.db.run(sql, [
-        name, email, phone, country, avatar, tags, comments, created_by
+        user_id, name, email, phone, country, avatar, tags, comments, created_by
       ], function(err) {
         if (err) {
           reject(err);
@@ -480,21 +499,36 @@ class Database {
   updateContact(contactData) {
     return new Promise((resolve, reject) => {
       const {
-        id, name, email, phone, country, avatar, tags, comments
+        id, name, email, phone, country, avatar, tags, comments, user_id
       } = contactData;
 
-      const sql = `
-        UPDATE contacts 
-        SET name = ?, email = ?, phone = ?, country = ?, avatar = ?, 
-            tags = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `;
+      let sql, params;
+      
+      if (user_id) {
+        // Verificar que el usuario solo pueda editar sus propios contactos
+        sql = `
+          UPDATE contacts 
+          SET name = ?, email = ?, phone = ?, country = ?, avatar = ?, 
+              tags = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? AND user_id = ?
+        `;
+        params = [name, email, phone, country, avatar, tags, comments, id, user_id];
+      } else {
+        // Admin puede editar cualquier contacto
+        sql = `
+          UPDATE contacts 
+          SET name = ?, email = ?, phone = ?, country = ?, avatar = ?, 
+              tags = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `;
+        params = [name, email, phone, country, avatar, tags, comments, id];
+      }
 
-      this.db.run(sql, [
-        name, email, phone, country, avatar, tags, comments, id
-      ], function(err) {
+      this.db.run(sql, params, function(err) {
         if (err) {
           reject(err);
+        } else if (this.changes === 0) {
+          reject(new Error('No se pudo actualizar el contacto. Verifique que tenga permisos.'));
         } else {
           resolve({ id, name, email, phone, country, avatar, tags, comments });
         }
@@ -502,12 +536,25 @@ class Database {
     });
   }
 
-  deleteContact(contactId) {
+  deleteContact(contactId, userId = null) {
     return new Promise((resolve, reject) => {
-      const sql = 'DELETE FROM contacts WHERE id = ?';
-      this.db.run(sql, [contactId], function(err) {
+      let sql, params;
+      
+      if (userId) {
+        // Usuario normal solo puede eliminar sus propios contactos
+        sql = 'DELETE FROM contacts WHERE id = ? AND user_id = ?';
+        params = [contactId, userId];
+      } else {
+        // Admin puede eliminar cualquier contacto
+        sql = 'DELETE FROM contacts WHERE id = ?';
+        params = [contactId];
+      }
+      
+      this.db.run(sql, params, function(err) {
         if (err) {
           reject(err);
+        } else if (this.changes === 0) {
+          reject(new Error('No se pudo eliminar el contacto. Verifique que tenga permisos.'));
         } else {
           resolve({ changes: this.changes });
         }
@@ -515,21 +562,42 @@ class Database {
     });
   }
 
-  getContactStats() {
+  getContactStats(userId = null) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN status = 'lead' THEN 1 ELSE 0 END) as leads,
-          SUM(CASE WHEN status = 'prospect' THEN 1 ELSE 0 END) as prospects,
-          SUM(CASE WHEN status = 'cliente' THEN 1 ELSE 0 END) as clients,
-          SUM(CASE WHEN status = 'inactivo' THEN 1 ELSE 0 END) as inactive,
-          SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority,
-          COUNT(DISTINCT company) as companies
-        FROM contacts
-      `;
+      let sql, params;
       
-      this.db.get(sql, [], (err, result) => {
+      if (userId) {
+        // Usuario normal ve solo estadísticas de sus contactos
+        sql = `
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'lead' THEN 1 ELSE 0 END) as leads,
+            SUM(CASE WHEN status = 'prospect' THEN 1 ELSE 0 END) as prospects,
+            SUM(CASE WHEN status = 'cliente' THEN 1 ELSE 0 END) as clients,
+            SUM(CASE WHEN status = 'inactivo' THEN 1 ELSE 0 END) as inactive,
+            SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority,
+            COUNT(DISTINCT company) as companies
+          FROM contacts
+          WHERE user_id = ?
+        `;
+        params = [userId];
+      } else {
+        // Admin ve estadísticas de todos los contactos
+        sql = `
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'lead' THEN 1 ELSE 0 END) as leads,
+            SUM(CASE WHEN status = 'prospect' THEN 1 ELSE 0 END) as prospects,
+            SUM(CASE WHEN status = 'cliente' THEN 1 ELSE 0 END) as clients,
+            SUM(CASE WHEN status = 'inactivo' THEN 1 ELSE 0 END) as inactive,
+            SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority,
+            COUNT(DISTINCT company) as companies
+          FROM contacts
+        `;
+        params = [];
+      }
+      
+      this.db.get(sql, params, (err, result) => {
         if (err) {
           reject(err);
         } else {
@@ -585,8 +653,17 @@ class Database {
       tagData.name, tagData.color, tagData.type, tagData.usage, 
       tagData.description, tagData.created_by
     ], function(err) {
+      if (err) {
+        if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE')) {
+          const uniqueError = new Error(`Ya existe una etiqueta con el nombre "${tagData.name}". Por favor, elige un nombre diferente.`);
+          uniqueError.code = 'DUPLICATE_NAME';
+          if (callback) callback(uniqueError);
+          return;
+        }
+      }
+      
       if (callback) {
-        callback(err, { id: this.lastID, ...tagData });
+        callback(err, err ? null : { id: this.lastID, ...tagData });
       }
     });
   }
@@ -612,7 +689,20 @@ class Database {
     this.db.run(sql, [
       tagData.name, tagData.color, tagData.type, tagData.usage,
       tagData.description, id
-    ], callback);
+    ], function(err) {
+      if (err) {
+        if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE')) {
+          const uniqueError = new Error(`Ya existe una etiqueta con el nombre "${tagData.name}". Por favor, elige un nombre diferente.`);
+          uniqueError.code = 'DUPLICATE_NAME';
+          if (callback) callback(uniqueError);
+          return;
+        }
+      }
+      
+      if (callback) {
+        callback(err, err ? null : { changes: this.changes });
+      }
+    });
   }
 
   deleteTag(id, callback) {

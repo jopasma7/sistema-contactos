@@ -129,15 +129,15 @@
                         </div>
                         
                         <div class="view-options">
-                            <button id="listView" class="view-toggle active">
+                            <button id="listView" class="view-toggle active" data-view="list">
                                 <i class="fas fa-list"></i>
                                 Lista
                             </button>
-                            <button id="cardView" class="view-toggle">
+                            <button id="cardView" class="view-toggle" data-view="card">
                                 <i class="fas fa-th-large"></i>
                                 Tarjetas
                             </button>
-                            <button id="gridView" class="view-toggle">
+                            <button id="gridView" class="view-toggle" data-view="grid">
                                 <i class="fas fa-th"></i>
                                 Cuadrícula
                             </button>
@@ -242,15 +242,15 @@
                         </div>
                         
                         <div class="view-options">
-                            <button id="userListView" class="view-toggle active">
+                            <button id="userListView" class="view-toggle active" data-view="list">
                                 <i class="fas fa-list"></i>
                                 Lista
                             </button>
-                            <button id="userCardView" class="view-toggle">
+                            <button id="userCardView" class="view-toggle" data-view="card">
                                 <i class="fas fa-th-large"></i>
                                 Tarjetas
                             </button>
-                            <button id="userGridView" class="view-toggle">
+                            <button id="userGridView" class="view-toggle" data-view="grid">
                                 <i class="fas fa-th"></i>
                                 Cuadrícula
                             </button>
@@ -315,15 +315,15 @@
                         </div>
                         
                         <div class="view-options">
-                            <button id="tagListView" class="view-toggle active">
+                            <button id="tagListView" class="view-toggle active" data-view="list">
                                 <i class="fas fa-list"></i>
                                 Lista
                             </button>
-                            <button id="tagCardView" class="view-toggle">
+                            <button id="tagCardView" class="view-toggle" data-view="card">
                                 <i class="fas fa-th-large"></i>
                                 Tarjetas
                             </button>
-                            <button id="tagGridView" class="view-toggle">
+                            <button id="tagGridView" class="view-toggle" data-view="grid">
                                 <i class="fas fa-th"></i>
                                 Cuadrícula
                             </button>
@@ -766,7 +766,7 @@
                             <i class="fas fa-trash-alt"></i>
                         </div>
                         <div class="warning-content">
-                            <p>¿Estás seguro de que deseas eliminar este contacto?</p>
+                            <p id="deleteMessage">¿Estás seguro de que deseas eliminar este elemento?</p>
                             <div id="deleteInfo" class="delete-info"></div>
                         </div>
                     </div>

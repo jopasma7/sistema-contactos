@@ -6,10 +6,43 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeLogin() {
+    // Asegurar que los inputs estén correctamente habilitados
+    ensureInputsEnabled();
     setupEventListeners();
     setupPasswordToggle();
     setupCredentialsCopy();
     animateElements();
+}
+
+function ensureInputsEnabled() {
+    // Pequeña demora para asegurar que el DOM esté completamente cargado
+    setTimeout(() => {
+        const inputs = document.querySelectorAll('input, textarea, button');
+        inputs.forEach(input => {
+            // Limpiar estilos que puedan interferir
+            input.style.pointerEvents = '';
+            input.style.cursor = '';
+            input.style.opacity = '';
+            
+            // Asegurar que estén habilitados
+            input.disabled = false;
+            
+            // Forzar reflow para Firefox/Webkit
+            input.offsetHeight;
+        });
+        
+        // Forzar focus en el primer input para activar el cursor
+        const usernameInput = document.getElementById('username');
+        if (usernameInput) {
+            usernameInput.focus();
+            // Pequeña demora y refocus si es necesario
+            setTimeout(() => {
+                if (document.activeElement !== usernameInput) {
+                    usernameInput.focus();
+                }
+            }, 50);
+        }
+    }, 100);
 }
 
 function setupEventListeners() {

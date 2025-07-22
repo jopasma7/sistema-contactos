@@ -165,17 +165,24 @@ ipcMain.handle('navigate:register', () => {
 });
 
 // IPC Handlers para gestión de contactos
-ipcMain.handle('contacts:getAll', async () => {
+ipcMain.handle('contacts:getAll', async (event, userContext = null) => {
   try {
-    const contacts = await database.getAllContacts();
+    // Si userContext es null o el usuario es admin, obtener todos los contactos
+    // Si es usuario normal, obtener solo sus contactos
+    const userId = (userContext && userContext.role !== 'admin') ? userContext.id : null;
+    const contacts = await database.getAllContacts(userId);
     return { success: true, data: contacts };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('contacts:create', async (event, contactData) => {
+ipcMain.handle('contacts:create', async (event, contactData, userContext = null) => {
   try {
+    // Asegurarse de que el contacto tenga el user_id correcto
+    if (userContext) {
+      contactData.user_id = userContext.id;
+    }
     const contact = await database.createContact(contactData);
     return { success: true, data: contact };
   } catch (error) {
@@ -183,27 +190,34 @@ ipcMain.handle('contacts:create', async (event, contactData) => {
   }
 });
 
-ipcMain.handle('contacts:update', async (event, contactData) => {
+ipcMain.handle('contacts:update', async (event, contactData, userContext = null) => {
   try {
-    const contact = await database.updateContact(contactData);
+    // Pasar el contexto de usuario para verificar permisos
+    const userId = (userContext && userContext.role !== 'admin') ? userContext.id : null;
+    const contact = await database.updateContact(contactData, userId);
     return { success: true, data: contact };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('contacts:delete', async (event, contactId) => {
+ipcMain.handle('contacts:delete', async (event, contactId, userContext = null) => {
   try {
-    await database.deleteContact(contactId);
+    // Pasar el contexto de usuario para verificar permisos
+    const userId = (userContext && userContext.role !== 'admin') ? userContext.id : null;
+    await database.deleteContact(contactId, userId);
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('contacts:getStats', async () => {
+ipcMain.handle('contacts:getStats', async (event, userContext = null) => {
   try {
-    const stats = await database.getContactStats();
+    // Si userContext es null o el usuario es admin, obtener estadísticas de todos
+    // Si es usuario normal, obtener solo estadísticas de sus contactos
+    const userId = (userContext && userContext.role !== 'admin') ? userContext.id : null;
+    const stats = await database.getContactStats(userId);
     return { success: true, data: stats };
   } catch (error) {
     return { success: false, error: error.message };

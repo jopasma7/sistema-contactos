@@ -13,11 +13,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteUser: (userId) => ipcRenderer.invoke('users:delete', userId),
   
   // Gestión de contactos empresariales
-  getAllContacts: () => ipcRenderer.invoke('contacts:getAll'),
-  createContact: (contactData) => ipcRenderer.invoke('contacts:create', contactData),
-  updateContact: (contactData) => ipcRenderer.invoke('contacts:update', contactData),
-  deleteContact: (contactId) => ipcRenderer.invoke('contacts:delete', contactId),
-  getContactStats: () => ipcRenderer.invoke('contacts:getStats'),
+  getAllContacts: (userContext) => ipcRenderer.invoke('contacts:getAll', userContext),
+  createContact: (contactData, userContext) => ipcRenderer.invoke('contacts:create', contactData, userContext),
+  updateContact: (contactData, userContext) => ipcRenderer.invoke('contacts:update', contactData, userContext),
+  deleteContact: (contactId, userContext) => ipcRenderer.invoke('contacts:delete', contactId, userContext),
+  getContactStats: (userContext) => ipcRenderer.invoke('contacts:getStats', userContext),
   
   // Gestión de etiquetas
   getAllTags: () => ipcRenderer.invoke('tags:getAll'),

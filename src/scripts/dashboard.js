@@ -347,6 +347,9 @@ async function initializeDashboard() {
     initializeTheme();
     document.getElementById('userWelcome').textContent = `Bienvenido, ${currentUser.name}`;
     
+    // Configurar navegación basada en roles
+    setupRoleBasedNavigation();
+    
     await Promise.all([
         loadUsers(),
         loadContacts(),
@@ -431,11 +434,33 @@ async function loadContacts() {
     showLoading(true);
     
     try {
-        const result = await window.electronAPI.getAllContacts();
+        const result = await window.electronAPI.getAllContacts(currentUser);
         
         if (result.success) {
             contacts = result.data;
-            renderContactsTable();
+            
+            // Renderizar basado en la vista activa
+            const activeViewBtn = document.querySelector('#contacts-tab .view-toggle.active');
+            console.log('Active contacts view button found:', activeViewBtn);
+            if (activeViewBtn) {
+                const viewType = activeViewBtn.dataset.view;
+                console.log('Detected contacts view type:', viewType);
+                switch (viewType) {
+                    case 'grid':
+                        renderContactsGrid();
+                        break;
+                    case 'card':
+                        renderContactsCards();
+                        break;
+                    case 'list':
+                    default:
+                        renderContactsTable();
+                        break;
+                }
+            } else {
+                console.log('No active contacts view button found, defaulting to table');
+                renderContactsTable();
+            }
         } else {
             showError('Error al cargar contactos: ' + result.error);
         }
@@ -449,7 +474,7 @@ async function loadContacts() {
 
 async function loadContactStats() {
     try {
-        const result = await window.electronAPI.getContactStats();
+        const result = await window.electronAPI.getContactStats(currentUser);
         
         if (result.success) {
             const stats = result.data;
@@ -1171,6 +1196,7 @@ function openDeleteContactModal(contactId) {
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) return;
     
+    document.getElementById('deleteMessage').textContent = '¿Estás seguro de que deseas eliminar este contacto?';
     document.getElementById('deleteInfo').innerHTML = `
         <strong>Contacto:</strong> ${contact.name}<br>
         <strong>Email:</strong> ${contact.email || 'Sin email'}
@@ -1247,7 +1273,7 @@ async function createContact(contactData) {
         console.log('=== CREATE CONTACT DEBUG ===');
         console.log('Data being sent:', contactData);
         
-        const result = await window.electronAPI.createContact(contactData);
+        const result = await window.electronAPI.createContact(contactData, currentUser);
         
         console.log('Result from backend:', result);
         
@@ -1271,7 +1297,7 @@ async function updateContact(contactData) {
         console.log('=== UPDATE CONTACT DEBUG ===');
         console.log('Data being sent:', contactData);
         
-        const result = await window.electronAPI.updateContact(contactData);
+        const result = await window.electronAPI.updateContact(contactData, currentUser);
         
         console.log('Result from backend:', result);
         
@@ -1307,7 +1333,30 @@ async function loadUsers() {
         
         if (result.success) {
             users = result.data;
-            renderUsersTable();
+            
+            // Renderizar basado en la vista activa
+            const activeViewBtn = document.querySelector('#users-tab .view-toggle.active');
+            console.log('Active users view button found:', activeViewBtn);
+            if (activeViewBtn) {
+                const viewType = activeViewBtn.dataset.view;
+                console.log('Detected users view type:', viewType);
+                switch (viewType) {
+                    case 'grid':
+                        renderUsersGrid();
+                        break;
+                    case 'card':
+                        renderUsersCards();
+                        break;
+                    case 'list':
+                    default:
+                        renderUsersTable();
+                        break;
+                }
+            } else {
+                console.log('No active users view button found, defaulting to table');
+                renderUsersTable();
+            }
+            
             updateUserStats();
         } else {
             showError('Error al cargar usuarios: ' + result.error);
@@ -1692,6 +1741,25 @@ function generateConversionReport() {
 }
 
 // ============ UTILITY FUNCTIONS ============
+function getRoleLabel(role) {
+    switch(role) {
+        case 'admin': return 'Administrador';
+        case 'user': return 'Usuario';
+        default: return role;
+    }
+}
+
+function getTagTypeLabel(type) {
+    const types = {
+        status: 'Estado',
+        priority: 'Prioridad',
+        category: 'Categoría',
+        role: 'Rol',
+        custom: 'Personalizada'
+    };
+    return types[type] || type;
+}
+
 function animateNumber(element, targetNumber) {
     if (!element) return;
     
@@ -1800,6 +1868,7 @@ function openDeleteUserModal(userId) {
         return;
     }
     
+    document.getElementById('deleteMessage').textContent = '¿Estás seguro de que deseas eliminar este usuario?';
     document.getElementById('deleteInfo').innerHTML = `
         <strong>Usuario:</strong> ${user.name}<br>
         <strong>Email:</strong> ${user.email}<br>
@@ -1944,7 +2013,7 @@ async function confirmDelete() {
     } else if (itemToDelete.type === 'contact') {
         // Delete contact
         try {
-            const result = await window.electronAPI.deleteContact(itemToDelete.id);
+            const result = await window.electronAPI.deleteContact(itemToDelete.id, currentUser);
             
             if (result.success) {
                 closeModals();
@@ -1961,14 +2030,42 @@ async function confirmDelete() {
     } else if (itemToDelete.type === 'tag') {
         // Delete tag
         try {
-            const index = tags.findIndex(t => t.id === itemToDelete.id);
-            if (index !== -1) {
-                tags.splice(index, 1);
+            // Llamar a la API para eliminar de la base de datos
+            const result = await window.electronAPI.deleteTag(itemToDelete.id);
+            
+            if (result.success) {
+                // Solo eliminar del array local si la eliminación en BD fue exitosa
+                const index = tags.findIndex(t => t.id === itemToDelete.id);
+                if (index !== -1) {
+                    tags.splice(index, 1);
+                }
+                
                 closeModals();
-                renderTagsTable();
-                renderTagsGrid();
+                
+                // Renderizar basado en la vista activa
+                const activeViewBtn = document.querySelector('#tags-tab .view-toggle.active');
+                if (activeViewBtn) {
+                    const viewType = activeViewBtn.dataset.view;
+                    switch (viewType) {
+                        case 'grid':
+                            renderTagsGrid();
+                            break;
+                        case 'card':
+                            renderTagsCards();
+                            break;
+                        case 'list':
+                        default:
+                            renderTagsTable();
+                            break;
+                    }
+                } else {
+                    renderTagsTable(); // Default
+                }
+                
                 updateTagStats();
                 showSuccessMessage('Etiqueta eliminada exitosamente');
+            } else {
+                showError(result.error || 'Error al eliminar etiqueta');
             }
         } catch (error) {
             console.error('Error eliminando etiqueta:', error);
@@ -1996,17 +2093,96 @@ function closeDeleteModal() {
 }
 
 function closeModals() {
-    closeUserModal();
-    closeContactModal();
-    closeTagModal();
-    closeDeleteModal();
+    // Cerrar todos los modales específicos
+    if (userModal) {
+        userModal.style.display = 'none';
+    }
+    if (contactModal) {
+        contactModal.style.display = 'none';
+    }
+    if (tagModal) {
+        tagModal.style.display = 'none';
+    }
+    if (deleteModal) {
+        deleteModal.style.display = 'none';
+    }
+    
+    // Cerrar cualquier modal que pueda estar abierto
+    const allModals = document.querySelectorAll('.modal');
+    allModals.forEach(modal => {
+        modal.style.display = 'none';
+    });
+    
+    // Limpiar formularios
+    if (userForm) userForm.reset();
+    if (contactForm) contactForm.reset();
+    if (tagForm) tagForm.reset();
+    
+    // Restaurar estado del body
+    document.body.style.overflow = 'auto';
+    document.body.classList.remove('modal-open');
+    
+    // Ocultar errores
+    hideError();
 }
 
 async function handleLogout() {
     if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+        // Limpiar todos los datos de sesión
         localStorage.removeItem('userToken');
         localStorage.removeItem('currentUser');
-        await window.electronAPI.navigateToLogin();
+        sessionStorage.removeItem('currentUser');
+        
+        // Limpiar variables globales
+        currentUser = null;
+        users = [];
+        contacts = [];
+        tags = [];
+        
+        // Limpiar modales abiertos
+        closeModals();
+        
+        // Limpiar loading overlay
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        // Limpiar estado de formularios y DOM
+        document.body.style.overflow = 'auto';
+        document.body.classList.remove('modal-open');
+        document.documentElement.style.overflow = 'auto';
+        
+        // Limpiar cualquier overlay de backdrop
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        
+        // Remover estilos inline y clases que puedan interferir
+        const elementsWithInlineStyle = document.querySelectorAll('[style*="pointer-events"], [style*="cursor"]');
+        elementsWithInlineStyle.forEach(element => {
+            element.style.pointerEvents = '';
+            element.style.cursor = '';
+        });
+        
+        // Forzar re-render de inputs si existen
+        const inputs = document.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            input.blur();
+            input.style.pointerEvents = '';
+            input.style.cursor = '';
+        });
+        
+        // Limpiar variables de estado
+        isEditing = false;
+        editingUserId = null;
+        editingContactId = null;
+        editingTagId = null;
+        window.itemToDelete = null;
+        
+        // Pequeña demora para asegurar que el DOM se limpie completamente
+        setTimeout(async () => {
+            // Navegar al login
+            await window.electronAPI.navigateToLogin();
+        }, 100);
     }
 }
 
@@ -2272,6 +2448,9 @@ async function updateTag(tagData) {
 function renderTagsGrid() {
     const tagsContainer = document.getElementById('tagsContainer');
     
+    // Asegurar que tenga la clase correcta
+    tagsContainer.className = 'tags-grid-container';
+    
     const gridHTML = tags.map(tag => {
         return `
             <div class="tag-grid-item">
@@ -2300,6 +2479,9 @@ function renderTagsGrid() {
 
 function renderTagsCards() {
     const tagsContainer = document.getElementById('tagsContainer');
+    
+    // Asegurar que tenga la clase correcta
+    tagsContainer.className = 'tags-card-container';
     
     const cardsHTML = tags.map(tag => {
         return `
@@ -2340,8 +2522,37 @@ function renderTagsTable() {
     console.log('Tags array:', tags);
     console.log('Tags length:', tags ? tags.length : 'undefined');
     
+    const tagsContainer = document.getElementById('tagsContainer');
+    
+    // Asegurar que tenga la clase y estructura correcta
+    tagsContainer.className = 'tags-table-container';
+    
+    // Recrear estructura de tabla si no existe
+    if (!tagsContainer.querySelector('table')) {
+        tagsContainer.innerHTML = `
+            <table id="tagsTable" class="tags-table">
+                <thead>
+                    <tr>
+                        <th>Color</th>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Uso</th>
+                        <th>Descripción</th>
+                        <th>Creada por</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tagsTableBody">
+                </tbody>
+            </table>
+        `;
+        // Reassignar referencia global
+        tagsTableBody = document.getElementById('tagsTableBody');
+    }
+    
     if (!tagsTableBody) {
-        console.error('Tags table body not found!');
+        console.error('Tags table body not found after recreation!');
         return;
     }
     
@@ -2458,17 +2669,6 @@ function renderFilteredTags(filteredTags) {
     }
 }
 
-function getTagTypeLabel(type) {
-    const types = {
-        status: 'Estado',
-        priority: 'Prioridad',
-        category: 'Categoría',
-        role: 'Rol',
-        custom: 'Personalizada'
-    };
-    return types[type] || type;
-}
-
 function getTagUsageLabel(usage) {
     const usages = {
         users: 'Usuarios',
@@ -2495,6 +2695,7 @@ function openDeleteTagModal(tagId) {
     const tag = tags.find(t => t.id === tagId);
     if (!tag) return;
     
+    document.getElementById('deleteMessage').textContent = '¿Estás seguro de que deseas eliminar esta etiqueta?';
     document.getElementById('deleteInfo').innerHTML = `
         <strong>Etiqueta:</strong> ${tag.name}<br>
         <strong>Tipo:</strong> ${getTagTypeLabel(tag.type)}
@@ -2519,11 +2720,159 @@ async function loadTags() {
             tags = [];
         }
         
-        renderTagsTable();
+        // Renderizar basado en la vista activa
+        const activeViewBtn = document.querySelector('#tags-tab .view-toggle.active');
+        console.log('Active view button found:', activeViewBtn);
+        if (activeViewBtn) {
+            const viewType = activeViewBtn.dataset.view;
+            console.log('Detected view type:', viewType);
+            switch (viewType) {
+                case 'grid':
+                    renderTagsGrid();
+                    break;
+                case 'card':
+                    renderTagsCards();
+                    break;
+                case 'list':
+                default:
+                    renderTagsTable();
+                    break;
+            }
+        } else {
+            console.log('No active view button found, defaulting to table');
+            // Default a lista si no hay vista activa
+            renderTagsTable();
+        }
+        
         updateTagStats();
     } catch (error) {
         console.error('Error cargando etiquetas:', error);
         showError('Error al cargar etiquetas');
         tags = [];
     }
+}
+
+// ============ ROLE-BASED ACCESS CONTROL ============
+
+function setupRoleBasedNavigation() {
+    if (!currentUser) return;
+    
+    // Ocultar tab de usuarios para usuarios normales
+    const usersTab = document.querySelector('[data-tab="users"]');
+    if (currentUser.role !== 'admin' && usersTab) {
+        usersTab.style.display = 'none';
+    }
+    
+    // Agregar tab de perfil
+    addProfileTab();
+    
+    // Si el usuario actual es normal y está en la tab de usuarios, cambiar al dashboard
+    if (currentUser.role !== 'admin' && currentTab === 'users') {
+        switchTab('dashboard');
+    }
+}
+
+function addProfileTab() {
+    const navigation = document.querySelector('.nav-tabs');
+    if (!navigation) return;
+    
+    // Verificar si ya existe la tab de perfil
+    if (document.querySelector('[data-tab="profile"]')) return;
+    
+    // Crear el botón de perfil
+    const profileBtn = document.createElement('button');
+    profileBtn.className = 'tab-btn';
+    profileBtn.setAttribute('data-tab', 'profile');
+    profileBtn.innerHTML = '👤 Perfil';
+    
+    // Agregar event listener
+    profileBtn.addEventListener('click', (e) => {
+        switchTab('profile');
+    });
+    
+    // Insertar antes del botón de reportes (último)
+    const reportsBtn = document.querySelector('[data-tab="reports"]');
+    if (reportsBtn) {
+        navigation.insertBefore(profileBtn, reportsBtn);
+    } else {
+        navigation.appendChild(profileBtn);
+    }
+    
+    // Crear el contenido de la tab de perfil
+    createProfileTabContent();
+}
+
+function createProfileTabContent() {
+    const mainContent = document.querySelector('.main-content');
+    if (!mainContent || document.getElementById('profile-tab')) return;
+    
+    const profileTab = document.createElement('div');
+    profileTab.id = 'profile-tab';
+    profileTab.className = 'tab-content';
+    
+    profileTab.innerHTML = `
+        <div class="profile-section">
+            <div class="section-header">
+                <h2>👤 Mi Perfil</h2>
+                <p>Gestiona tu información personal</p>
+            </div>
+            
+            <div class="profile-container">
+                <div class="profile-card">
+                    <div class="profile-avatar">
+                        <div class="avatar-circle">
+                            ${currentUser.name.charAt(0).toUpperCase()}
+                        </div>
+                    </div>
+                    
+                    <div class="profile-info">
+                        <h3>${currentUser.name}</h3>
+                        <p class="profile-email">${currentUser.email}</p>
+                        <div class="profile-role">
+                            <span class="role-badge role-${currentUser.role}">${getRoleLabel(currentUser.role)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-actions">
+                        <button class="btn btn-primary" onclick="openEditProfileModal()">
+                            ✏️ Editar Perfil
+                        </button>
+                        <button class="btn btn-secondary" onclick="openChangePasswordModal()">
+                            🔒 Cambiar Contraseña
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="profile-stats">
+                    <h4>Estadísticas Personales</h4>
+                    <div class="stats-grid" id="profileStats">
+                        <div class="stat-card">
+                            <div class="stat-number">-</div>
+                            <div class="stat-label">Contactos Creados</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">-</div>
+                            <div class="stat-label">Actividades</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">-</div>
+                            <div class="stat-label">Último Acceso</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    mainContent.appendChild(profileTab);
+}
+
+function openEditProfileModal() {
+    // TODO: Implementar modal para editar perfil
+    showInfo('Funcionalidad de editar perfil próximamente disponible');
+}
+
+function openChangePasswordModal() {
+    // TODO: Implementar modal para cambiar contraseña  
+    showInfo('Funcionalidad de cambiar contraseña próximamente disponible');
 }

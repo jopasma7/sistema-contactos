@@ -120,3 +120,15 @@ README_new.md
 *_new.css
 *_old.*
 *_backup.*
+*.backup*
+*-clean.*
+
+# Test and verification files
+verify-*.js
+check-*.js
+create_test_*.js
+
+# Build artifacts
+build.bat
+dist/
+out/
