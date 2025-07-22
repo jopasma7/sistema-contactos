@@ -1,5 +1,5 @@
 /* ===============================
-   CRM Contactos Pro - Register Styles
+   CRM Contactos Pro - Login Styles
    Professional & Modern Design
    =============================== */
 
@@ -49,8 +49,7 @@ body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     background: var(--primary-gradient);
     min-height: 100vh;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
@@ -129,7 +128,7 @@ body {
    Main Layout
    =============================== */
 
-.register-wrapper {
+.login-wrapper {
     display: flex;
     min-height: 100vh;
     position: relative;
@@ -255,36 +254,32 @@ body {
 }
 
 /* ===============================
-   Register Section (Right Side) 
+   Login Section (Right Side)
    =============================== */
 
-.register-section {
+.login-section {
     flex: 1;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     padding: 2rem;
     background: var(--surface-secondary);
-    overflow-y: auto;
-    max-height: 100vh;
 }
 
-.register-card {
+.login-card {
     width: 100%;
     max-width: 480px;
     background: var(--surface-elevated);
     border-radius: var(--radius-lg);
-    padding: 2rem;
+    padding: 3rem;
     box-shadow: var(--shadow-xl);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
     position: relative;
-    overflow: visible;
-    margin-top: 1rem;
-    margin-bottom: 2rem;
+    overflow: hidden;
 }
 
-.register-card::before {
+.login-card::before {
     content: '';
     position: absolute;
     top: 0;
@@ -296,11 +291,11 @@ body {
 
 .card-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .card-header h2 {
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 0.5rem;
@@ -309,146 +304,40 @@ body {
 
 .card-header p {
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 400;
     line-height: 1.5;
-}
-
-/* ===============================
-   Avatar Section
-   =============================== */
-
-.avatar-section {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 1.5rem;
-}
-
-.avatar-upload-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    position: relative;
-    cursor: pointer;
-    transition: var(--transition-normal);
-}
-
-.avatar-preview {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    overflow: hidden;
-    position: relative;
-    background: var(--surface-glass);
-    backdrop-filter: blur(10px);
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    transition: var(--transition-normal);
-}
-
-.avatar-upload-container:hover .avatar-preview {
-    transform: scale(1.05);
-    border-color: rgba(102, 126, 234, 0.5);
-}
-
-.avatar-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-}
-
-.avatar-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-}
-
-.avatar-upload-container:hover .avatar-overlay {
-    opacity: 1;
-}
-
-.avatar-overlay i {
-    color: white;
-    font-size: 1.5rem;
-}
-
-.avatar-upload-label {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    cursor: pointer;
-    transition: color var(--transition-normal);
-}
-
-.avatar-upload-container:hover .avatar-upload-label {
-    color: #667eea;
 }
 
 /* ===============================
    Form Styles
    =============================== */
 
-.register-form {
+.login-form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.5rem;
 }
 
-.input-group,
-.select-group {
+.input-group {
     position: relative;
 }
 
-.input-group input,
-.input-group select,
-.select-group select {
+.input-group input {
     width: 100%;
-    padding: 0.875rem 0.875rem 0.875rem 3rem;
+    padding: 1rem 1rem 1rem 3.5rem;
     border: 2px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--surface-primary);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--text-primary);
     transition: all var(--transition-normal);
     outline: none;
     font-family: inherit;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
 }
 
-/* Custom select arrow */
-.select-group::after {
-    content: '\f078';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-secondary);
-    pointer-events: none;
-    font-size: 0.8rem;
-    transition: color var(--transition-normal);
-}
-
-.select-group:has(select:focus)::after {
-    color: #667eea;
-}
-
-.input-group input:focus,
-.input-group select:focus,
-.select-group select:focus {
+.input-group input:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     transform: translateY(-1px);
@@ -461,32 +350,27 @@ body {
 
 .input-icon {
     position: absolute;
-    left: 0.875rem;
+    left: 1rem;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 1.1rem;
     z-index: 2;
     transition: color var(--transition-normal);
 }
 
 .input-group input:focus + .input-icon,
-.input-group:has(input:focus) .input-icon,
-.input-group select:focus + .input-icon,
-.input-group:has(select:focus) .input-icon,
-.select-group select:focus + .input-icon,
-.select-group:has(select:focus) .input-icon {
+.input-group:has(input:focus) .input-icon {
     color: #667eea;
 }
 
-.input-group label,
-.select-group label {
+.input-group label {
     position: absolute;
-    left: 3rem;
+    left: 3.5rem;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 500;
     pointer-events: none;
     transition: all var(--transition-normal);
@@ -495,13 +379,9 @@ body {
 }
 
 .input-group input:focus + label,
-.input-group input:not(:placeholder-shown) + label,
-.input-group select:focus + label,
-.input-group select:not([value=""]) + label,
-.select-group select:focus + label,
-.select-group select:not([value=""]) + label {
+.input-group input:not(:placeholder-shown) + label {
     top: 0;
-    left: 0.875rem;
+    left: 1rem;
     font-size: 0.75rem;
     color: #667eea;
     font-weight: 600;
@@ -509,14 +389,14 @@ body {
 
 .password-toggle {
     position: absolute;
-    right: 0.875rem;
+    right: 1rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 1.1rem;
     padding: 0.5rem;
     border-radius: var(--radius-sm);
     transition: all var(--transition-normal);
@@ -533,7 +413,7 @@ body {
 
 .form-options {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     margin: 0.5rem 0;
 }
@@ -554,8 +434,8 @@ body {
 }
 
 .checkmark {
-    height: 18px;
-    width: 18px;
+    height: 20px;
+    width: 20px;
     background: var(--surface-primary);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-sm);
@@ -574,12 +454,12 @@ body {
 .custom-checkbox input:checked ~ .checkmark {
     background: var(--primary-gradient);
     border-color: #667eea;
-    transform: scale(1.05);
+    transform: scale(1.1);
 }
 
 .checkmark i {
     color: var(--text-light);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     opacity: 0;
     transition: opacity var(--transition-normal);
 }
@@ -590,35 +470,35 @@ body {
 
 .checkbox-text {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 500;
-    line-height: 1.4;
 }
 
-.terms-link {
+.forgot-password {
     color: #667eea;
     text-decoration: none;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 500;
     transition: color var(--transition-normal);
 }
 
-.terms-link:hover {
+.forgot-password:hover {
     color: #764ba2;
     text-decoration: underline;
 }
 
 /* ===============================
-   Register Button
+   Login Button
    =============================== */
 
-.register-button-submit {
+.login-button {
     width: 100%;
-    padding: 0.875rem 2rem;
+    padding: 1rem 2rem;
     background: var(--primary-gradient);
     border: none;
     border-radius: var(--radius-md);
     color: var(--text-light);
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
@@ -629,12 +509,12 @@ body {
     box-shadow: var(--shadow-md);
 }
 
-.register-button-submit:hover {
+.login-button:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
 
-.register-button-submit:active {
+.login-button:active {
     transform: translateY(0);
 }
 
@@ -658,17 +538,17 @@ body {
     transition: opacity var(--transition-normal);
 }
 
-.register-button-submit.loading .button-content {
+.login-button.loading .button-content {
     opacity: 0;
 }
 
-.register-button-submit.loading .button-loading {
+.login-button.loading .button-loading {
     opacity: 1;
 }
 
 .loading-spinner {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top: 2px solid var(--text-light);
     border-radius: 50%;
@@ -688,12 +568,12 @@ body {
     display: none;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.875rem;
+    padding: 1rem;
     background: rgba(245, 87, 108, 0.1);
     border: 1px solid rgba(245, 87, 108, 0.3);
     border-radius: var(--radius-md);
     color: #c53030;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 500;
     margin-top: 0.5rem;
 }
@@ -719,66 +599,47 @@ body {
 }
 
 /* ===============================
-   Success Message
+   Register Section in Login
    =============================== */
 
-.success-message {
-    display: none;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem;
-    background: rgba(56, 239, 125, 0.1);
-    border: 1px solid rgba(56, 239, 125, 0.3);
-    border-radius: var(--radius-md);
-    color: #22543d;
-    font-size: 0.85rem;
-    font-weight: 500;
-    margin-top: 0.5rem;
-}
-
-.success-message.show {
-    display: flex;
-    animation: slideDown 0.3s ease-out;
-}
-
-.success-message i {
-    color: #38ef7d;
-}
-
-/* ===============================
-   Login Navigation
-   =============================== */
-
-.login-section {
-    margin-top: 1.5rem;
+.register-section {
+    margin-top: 2rem;
     text-align: center;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--border-color);
 }
 
-.login-divider {
+.register-divider {
     position: relative;
-    margin-bottom: 1rem;
+    margin: 2rem 0 1.5rem;
     text-align: center;
 }
 
-.login-divider span {
+.register-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.register-divider span {
     background: var(--surface-elevated);
     padding: 0 1rem;
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     position: relative;
     z-index: 1;
 }
 
-.login-button-link {
+.register-button {
     width: 100%;
-    padding: 0.75rem 2rem;
+    padding: 0.875rem 2rem;
     background: var(--surface-glass);
     color: var(--text-primary);
     border: 2px solid rgba(102, 126, 234, 0.3);
     border-radius: var(--radius-md);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition-normal);
@@ -789,14 +650,86 @@ body {
     gap: 0.5rem;
 }
 
-.login-button-link:hover {
+.register-button:hover {
     background: rgba(102, 126, 234, 0.1);
     border-color: rgba(102, 126, 234, 0.6);
     transform: translateY(-1px);
 }
 
-.login-button-link:active {
+.register-button:active {
     transform: translateY(0);
+}
+
+/* ===============================
+   Demo Section
+   =============================== */
+
+.demo-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.demo-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.demo-header i {
+    color: #4facfe;
+}
+
+.demo-credentials {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.credential-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.credential-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.credential-value {
+    background: var(--surface-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-family: 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.credential-value:hover {
+    background: #4facfe;
+    color: var(--text-light);
+    border-color: #4facfe;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.credential-value i {
+    font-size: 0.75rem;
+    opacity: 0.7;
 }
 
 /* ===============================
@@ -898,26 +831,15 @@ body {
    =============================== */
 
 @media (max-width: 1024px) {
-    .register-wrapper {
+    .login-wrapper {
         flex-direction: column;
-        min-height: auto;
     }
     
     .brand-section {
         flex: none;
-        min-height: 35vh;
+        min-height: 40vh;
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .register-section {
-        align-items: center;
-        max-height: none;
-        min-height: 65vh;
-    }
-    
-    .register-card {
-        margin-top: 0;
     }
     
     .brand-title {
@@ -949,18 +871,16 @@ body {
 @media (max-width: 768px) {
     .brand-section {
         padding: 1.5rem;
-        min-height: 30vh;
+        min-height: 35vh;
     }
     
-    .register-section {
-        padding: 1rem;
-        min-height: 70vh;
-    }
-    
-    .register-card {
+    .login-section {
         padding: 1.5rem;
+    }
+    
+    .login-card {
+        padding: 2rem;
         max-width: none;
-        margin-bottom: 1rem;
     }
     
     .brand-title {
@@ -977,47 +897,35 @@ body {
     }
     
     .card-header h2 {
-        font-size: 1.6rem;
+        font-size: 1.75rem;
     }
     
-    .avatar-preview {
-        width: 70px;
-        height: 70px;
+    .form-options {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+        text-align: center;
     }
     
-    .input-group input,
-    .input-group select {
-        padding: 0.75rem 0.75rem 0.75rem 2.75rem;
-        font-size: 0.9rem;
+    .demo-credentials {
+        gap: 0.75rem;
     }
     
-    .input-icon {
-        left: 0.75rem;
-        font-size: 0.95rem;
-    }
-    
-    .input-group label {
-        left: 2.75rem;
-        font-size: 0.9rem;
-    }
-    
-    .input-group input:focus + label,
-    .input-group input:not(:placeholder-shown) + label,
-    .input-group select:focus + label,
-    .input-group select:not([value=""]) + label {
-        left: 0.75rem;
-        font-size: 0.7rem;
+    .credential-item {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
     }
 }
 
 @media (max-width: 480px) {
     .brand-section,
-    .register-section {
+    .login-section {
         padding: 1rem;
     }
     
-    .register-card {
-        padding: 1.25rem;
+    .login-card {
+        padding: 1.5rem;
         border-radius: var(--radius-md);
     }
     
@@ -1043,19 +951,6 @@ body {
         flex-direction: row;
         padding: 0.75rem 1rem;
     }
-    
-    .avatar-preview {
-        width: 60px;
-        height: 60px;
-    }
-    
-    .card-header h2 {
-        font-size: 1.5rem;
-    }
-    
-    .register-form {
-        gap: 1rem;
-    }
 }
 
 /* ===============================
@@ -1080,7 +975,7 @@ body {
         display: none !important;
     }
     
-    .register-wrapper {
+    .login-wrapper {
         background: white;
     }
     
